@@ -1,0 +1,56 @@
+{
+  "name": "assembly",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.15.0",
+  "engines": {
+    "node": ">=22.22.3 <23"
+  },
+  "scripts": {
+    "dev": "node node_modules/next/dist/bin/next dev apps/web --hostname 127.0.0.1 --port 3102",
+    "build": "node node_modules/next/dist/bin/next build apps/web",
+    "start": "node node_modules/next/dist/bin/next start apps/web --hostname 127.0.0.1 --port 3102",
+    "worker": "tsx --env-file=.env.local apps/worker/index.ts",
+    "db:migrate": "tsx --env-file=.env.local scripts/migrate.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint apps packages scripts tests",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "qloo:probe": "tsx --env-file=.env.local scripts/qloo-probe.ts",
+    "test:db": "ASSEMBLY_DB_TEST=1 vitest run tests/domain.postgres.test.ts",
+    "format:check": "prettier --check apps/web/components apps/web/app tests/e2e"
+  },
+  "dependencies": {
+    "@assembly/contracts": "workspace:*",
+    "@assembly/domain": "workspace:*",
+    "@assembly/qloo": "workspace:*",
+    "@fontsource-variable/fraunces": "5.3.0",
+    "@fontsource-variable/manrope": "5.3.0",
+    "@radix-ui/react-dialog": "1.3.1",
+    "ai": "7.0.152",
+    "clsx": "2.1.1",
+    "lucide-react": "1.61.0",
+    "next": "16.4.3",
+    "pg": "8.23.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@playwright/test": "1.64.1",
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "22.19.11",
+    "@types/pg": "8.16.0",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "eslint": "9.39.4",
+    "eslint-config-next": "16.4.3",
+    "prettier": "3.9.10",
+    "tailwindcss": "4.3.3",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "vitest": "5.0.5"
+  }
+}

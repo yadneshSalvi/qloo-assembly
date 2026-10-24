@@ -1,0 +1,1 @@
+{"name":"@assembly/qloo","version":"0.1.0","private":true,"type":"module","exports":"./src/index.ts","dependencies":{"@modelcontextprotocol/sdk":"1.32.2","@qloo/qloo-harness":"0.1.26"}}
