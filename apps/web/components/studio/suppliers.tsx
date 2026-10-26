@@ -289,6 +289,8 @@ function SupplierForm({
         const result = await act("UPSERT_SUPPLIER", {
           supplier: {
             ...draft,
+            programStart: draft.programStart || undefined,
+            setupStart: draft.setupStart || undefined,
             validUntil: `${draft.validUntil}T23:59:59.000Z`,
           },
         });

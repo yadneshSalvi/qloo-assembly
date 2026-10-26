@@ -480,6 +480,13 @@ test("saved productions preserve independent work and forged capabilities are re
   await offer
     .getByLabel("Source of the quote")
     .fill("Synthetic operator quote used only for browser testing.");
+  // An incomplete draft can be saved; composition and publication require timing later.
+  await expect(offer.getByLabel("Program starts", { exact: true })).toHaveValue(
+    "",
+  );
+  await expect(offer.getByLabel("Setup starts", { exact: true })).toHaveValue(
+    "",
+  );
   await offer
     .getByRole("button", { name: "Save this offer", exact: true })
     .click();
@@ -512,6 +519,8 @@ test("saved productions preserve independent work and forged capabilities are re
   expect(restored.id).toBe(original.id);
   expect(restored.venue.name).toBe("QA operator room");
   expect(restored.suppliers[0].name).toBe("QA Workshop");
+  expect(restored.suppliers[0]).not.toHaveProperty("programStart");
+  expect(restored.suppliers[0]).not.toHaveProperty("setupStart");
   const stranger = await browser.newContext();
   const denied = await stranger.request.post(
     "http://127.0.0.1:3102/api/workspace",
