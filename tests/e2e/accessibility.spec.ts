@@ -1,15 +1,54 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { publishedSample, readWorkspace } from "./helpers";
 test("public and production screens pass automated critical/serious WCAG checks", async ({
   page,
 }) => {
+  const w = await publishedSample(page.request);
+  const publicView = await (
+    await page.request.get(`/api/public/events/${w.event.slug}`)
+  ).json();
+  const interest = await page.request.post(
+    `/api/public/events/${w.event.slug}`,
+    {
+      headers: { Origin: "http://127.0.0.1:3102" },
+      data: {
+        type: "EXPRESS_INTEREST",
+        expectedPublicVersion: publicView.version,
+        termsVersion: publicView.terms.version,
+        termsHash: publicView.terms.hash,
+        idempotencyKey: crypto.randomUUID(),
+        payload: { name: "Axe rehearsal", quantity: 1, consent: true },
+      },
+    },
+  );
+  expect(interest.ok()).toBeTruthy();
+  const participant = await interest.json();
+  const current = await readWorkspace(page.request);
+  const invitation = await page.request.post("/api/supplier-links", {
+    headers: { Origin: "http://127.0.0.1:3102" },
+    data: {
+      supplierId: "low-lights",
+      workspaceId: current.id,
+      expectedVersion: current.version,
+      idempotencyKey: crypto.randomUUID(),
+    },
+  });
+  expect(invitation.ok()).toBeTruthy();
+  const supplier = await invitation.json();
   for (const route of [
     "/",
     "/demo",
     "/studio",
-    "/studio/events/blue-hour/brief",
-    "/studio/venues/the-fold",
-    "/events/blue-hour",
+    "/studio/events/current/brief",
+    "/studio/venue",
+    "/studio/suppliers",
+    "/studio/events/current/concepts",
+    "/studio/events/current/production",
+    "/studio/events/current/changes/current",
+    `/events/${w.event.slug}`,
+    `/commitments/${participant.token}`,
+    `/collaborate/${supplier.token}`,
   ]) {
     await page.goto(route);
     await expect(page.locator("h1")).toBeVisible();
@@ -28,7 +67,7 @@ test("public and production screens pass automated critical/serious WCAG checks"
           summary: n.failureSummary,
         })),
       })),
-      route,
+      route.replace(/\/(commitments|collaborate)\/[a-f0-9]+/, "/$1/[private]"),
     ).toEqual([]);
   }
 });

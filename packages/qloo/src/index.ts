@@ -1,7 +1,8 @@
-import { createHash } from 'node:crypto';
+import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+export * from './live';
 
 export type WorkflowStatus = 'ok' | 'empty' | 'needs_input' | 'partial' | 'degraded' | 'error';
 export interface WorkflowEnvelope {
@@ -33,7 +34,6 @@ export class QlooHarness {
   private client = new Client({ name: 'assembly-worker', version: '0.1.0' });
   private connected = false;
   private capability: HarnessCapability | null = null;
-  private calls = 0;
   constructor(private readonly settings: { maxCalls?: number; timeoutMs?: number; env?: NodeJS.ProcessEnv } = {}) {
     if (!Number.isSafeInteger(settings.maxCalls ?? 6) || (settings.maxCalls ?? 6) < 1 || (settings.maxCalls ?? 6) > 20) throw new QlooBoundaryError('BUDGET', 'Set a finite run budget of one to twenty tool calls.');
     if (!Number.isSafeInteger(settings.timeoutMs ?? 20000) || (settings.timeoutMs ?? 20000) < 100 || (settings.timeoutMs ?? 20000) > 60000) throw new QlooBoundaryError('BUDGET', 'Tool timeouts must be between 100 and 60000 milliseconds.');
@@ -44,10 +44,8 @@ export class QlooHarness {
     const harnessEntry = import.meta.resolve('@qloo/qloo-harness');
     const binary = fileURLToPath(new URL('./bin.js', harnessEntry));
     const sourceEnv = this.settings.env ?? process.env;
-    const env = Object.fromEntries(Object.entries(sourceEnv).filter((entry): entry is [string, string] => typeof entry[1] === 'string'));
-    if (env.QLOO_BASE_URL && env.QLOO_BASE_URL !== 'https://hackathon.api.qloo.com') throw new QlooBoundaryError('INPUT', 'This event build uses the Qloo hackathon endpoint.');
-    env.QLOO_BASE_URL = 'https://hackathon.api.qloo.com';
-    env.QLOO_TRUSTED_BASE_URL = 'https://hackathon.api.qloo.com';
+    if (sourceEnv.QLOO_BASE_URL && sourceEnv.QLOO_BASE_URL !== 'https://hackathon.api.qloo.com') throw new QlooBoundaryError('INPUT', 'This event build uses the Qloo hackathon endpoint.');
+    const env = { NODE_ENV: 'production', PATH: sourceEnv.PATH ?? '', QLOO_API_KEY: sourceEnv.QLOO_API_KEY ?? '', QLOO_HOME: resolve('.data/qloo-worker'), QLOO_BASE_URL: 'https://hackathon.api.qloo.com', QLOO_TRUSTED_BASE_URL: 'https://hackathon.api.qloo.com' };
     const transport = new StdioClientTransport({ command: process.execPath, args: [binary, 'mcp'], env, stderr: 'pipe' });
     // Never echo the child's stderr: upstream diagnostics can contain request context.
     transport.stderr?.on('data', () => undefined);
@@ -65,28 +63,6 @@ export class QlooHarness {
       if (error instanceof QlooBoundaryError) throw error;
       throw new QlooBoundaryError('TRANSPORT', 'The local Qloo harness could not be started. Check the installed runtime and worker configuration.');
     }
-  }
-  private async call(operation: 'describe' | 'rank', args: Record<string, unknown>) {
-    const capability = await this.connect();
-    // Requiring an explicit worker key prevents accidentally using a developer's saved credential.
-    if (!(this.settings.env ?? process.env).QLOO_API_KEY || !capability.ready) throw new QlooBoundaryError('NOT_CONFIGURED', 'Live Qloo is not configured. No sample result was substituted.');
-    if (++this.calls > (this.settings.maxCalls ?? 6)) throw new QlooBoundaryError('BUDGET', 'This research run reached its Qloo call budget.');
-    if (!capability.tools.includes(`qloo_${operation}`)) throw new QlooBoundaryError('CONTRACT', 'This harness does not expose the required workflow.');
-    try {
-      const result = await this.client.callTool({ name: `qloo_${operation}`, arguments: args }, undefined, this.options());
-      return { envelope: parseEnvelope(result.structuredContent, operation), capturedAt: new Date().toISOString(), queryFingerprint: createHash('sha256').update(JSON.stringify({ operation, args })).digest('hex'), transport: 'LIVE' as const };
-    } catch (error) {
-      if (error instanceof QlooBoundaryError) throw error;
-      throw new QlooBoundaryError('TRANSPORT', 'Qloo did not complete this request. No recommendation was substituted.');
-    }
-  }
-  describe(entity: string, type: 'artist' | 'book' | 'brand' | 'movie' | 'place') {
-    if (typeof entity !== 'string' || !entity.trim() || entity.length > 200) throw new QlooBoundaryError('INPUT', 'Enter a short cultural reference.');
-    return this.call('describe', { entity: entity.trim(), type });
-  }
-  rank(options: string[], signals: string[], optionType: 'artist' | 'book' | 'brand' | 'movie' | 'place') {
-    validateConfirmedIds(options, 'Options'); validateConfirmedIds(signals, 'Signals');
-    return this.call('rank', { options, signals, option_type: optionType });
   }
   async close() { await this.client.close().catch(() => undefined); this.connected = false; this.capability = null; }
 }

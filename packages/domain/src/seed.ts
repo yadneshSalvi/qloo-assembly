@@ -1,27 +1,616 @@
-import { createHash, randomBytes } from 'node:crypto';
-import type { Workspace, Concept, Terms } from '@assembly/contracts';
+import { createHash, randomBytes } from "node:crypto";
+import type { Workspace, Concept, Terms } from "@assembly/contracts";
+import { canonicalJson } from "./serialization";
 export const concepts: Concept[] = [
- {id:'blue-hour',number:'01',title:'Blue hour, shared table.',subtitle:'Stay for one more record.',category:'LISTENING ROOM × LONG-TABLE SUPPER',description:'Soulful grooves, generous plates, and the easy intimacy of a room that feels like someone’s home. An acoustic live set gives way to records and a seasonal sharing supper.',color:'#173e46',art:'blue-hour',fixedCostMinor:78000,variableCostMinor:800,ticketPriceMinor:3200,ingredients:['Live neo-soul & jazz','Seasonal sharing plates','A record-led afterglow'],rationale:'The laid-back instrumentation of Khruangbin, the intimate everyday scenes of Wong Kar-wai, and the generosity of an Ottolenghi-style table suggest a common feeling: warm, unhurried togetherness. This is an authored editorial hypothesis, not Qloo evidence.',evidenceIds:['editorial-connection','inventory-source','cost-calculation'],supplierIds:['low-lights','little-table']},
- {id:'night-garden',number:'02',title:'The night garden.',subtitle:'A film that follows you home.',category:'SHORT FILM × BOTANICAL TASTING',description:'An evening of original short films, botanical drinks, and a small conversation about the places we belong. A quieter, more reflective way to gather.',color:'#53353f',art:'night-garden',fixedCostMinor:98000,variableCostMinor:600,ticketPriceMinor:3200,ingredients:['Independent short films','Botanical zero-proof drinks','A hosted conversation'],rationale:'A softer reading of the brief: cinematic atmosphere and seasonal flavor, supported by fictional local film and food offers. All screening rights require an explicit operator check.',evidenceIds:['editorial-connection','inventory-source'],supplierIds:['frame-club','little-table']},
- {id:'soft-signals',number:'03',title:'Soft signals.',subtitle:'A little less scrolling. A little more soul.',category:'VINYL SESSION × PRINT WORKSHOP',description:'A hands-on evening of record sharing and simple printmaking. Make a sleeve for a favorite song, swap stories, and leave with something made together.',color:'#e4bd58',art:'soft-signal',fixedCostMinor:62000,variableCostMinor:600,ticketPriceMinor:3200,ingredients:['A selector-led vinyl session','A one-color print workshop','Shared small plates'],rationale:'A participatory interpretation of the same anchors, bringing record culture and tactile design into the available room. Authored sample programming, without a measured demand claim.',evidenceIds:['editorial-connection','inventory-source'],supplierIds:['paper-sound','little-table']},
+  {
+    id: "blue-hour",
+    origin: "AUTHORED_SAMPLE",
+    number: "01",
+    title: "Blue hour, shared table.",
+    subtitle: "Stay for one more record.",
+    category: "LISTENING ROOM × LONG-TABLE SUPPER",
+    description:
+      "Soulful grooves, generous plates, and the easy intimacy of a room that feels like someone’s home. An acoustic live set gives way to records and a seasonal sharing supper.",
+    color: "#173e46",
+    art: "blue-hour",
+    fixedCostMinor: 78000,
+    variableCostMinor: 800,
+    ticketPriceMinor: 3200,
+    ingredients: [
+      "Live neo-soul & jazz",
+      "Seasonal sharing plates",
+      "A record-led afterglow",
+    ],
+    rationale:
+      "The laid-back instrumentation of Khruangbin, the intimate everyday scenes of Wong Kar-wai, and the generosity of an Ottolenghi-style table suggest a common feeling: warm, unhurried togetherness. This is an authored editorial hypothesis, not Qloo evidence.",
+    evidenceIds: [
+      "editorial-connection",
+      "inventory-source",
+      "cost-calculation",
+    ],
+    supplierIds: ["low-lights", "little-table"],
+  },
+  {
+    id: "night-garden",
+    origin: "AUTHORED_SAMPLE",
+    number: "02",
+    title: "The night garden.",
+    subtitle: "A film that follows you home.",
+    category: "SHORT FILM × BOTANICAL TASTING",
+    description:
+      "An evening of original short films, botanical drinks, and a small conversation about the places we belong. A quieter, more reflective way to gather.",
+    color: "#53353f",
+    art: "night-garden",
+    fixedCostMinor: 98000,
+    variableCostMinor: 600,
+    ticketPriceMinor: 3200,
+    ingredients: [
+      "Independent short films",
+      "Botanical zero-proof drinks",
+      "A hosted conversation",
+    ],
+    rationale:
+      "A softer reading of the brief: cinematic atmosphere and seasonal flavor, supported by fictional local film and food offers. All screening rights require an explicit operator check.",
+    evidenceIds: ["editorial-connection", "inventory-source"],
+    supplierIds: ["frame-club", "little-table"],
+  },
+  {
+    id: "soft-signals",
+    origin: "AUTHORED_SAMPLE",
+    number: "03",
+    title: "Soft signals.",
+    subtitle: "A little less scrolling. A little more soul.",
+    category: "VINYL SESSION × PRINT WORKSHOP",
+    description:
+      "A hands-on evening of record sharing and simple printmaking. Make a sleeve for a favorite song, swap stories, and leave with something made together.",
+    color: "#e4bd58",
+    art: "soft-signal",
+    fixedCostMinor: 62000,
+    variableCostMinor: 600,
+    ticketPriceMinor: 3200,
+    ingredients: [
+      "A selector-led vinyl session",
+      "A one-color print workshop",
+      "Shared small plates",
+    ],
+    rationale:
+      "A participatory interpretation of the same anchors, bringing record culture and tactile design into the available room. Authored sample programming, without a measured demand claim.",
+    evidenceIds: ["editorial-connection", "inventory-source"],
+    supplierIds: ["paper-sound", "little-table"],
+  },
 ];
-export function hashTerms(terms: Omit<Terms,'hash'> | Terms): string { const { hash: _hash, ...clean } = terms as Terms; void _hash; return createHash('sha256').update(JSON.stringify(clean)).digest('hex'); }
-export function createWorkspace(id: string): Workspace {
- const now=new Date().toISOString(); const token=()=>randomBytes(24).toString('hex');
- const terms: Terms={version:1,title:'Blue hour, shared table.',date:'2026-11-14',doors:'18:30',end:'22:00',venue:'The Fold',address:'18 Bellenden Road, Peckham, London · fictional sample venue',priceMinor:3200,currency:'GBP',program:'Nila & The Low Lights · a seasonal supper by Little Table',access:'Step-free entrance and accessible toilet. Seated event. Dietary needs must be confirmed with the host.',conditional:true,notice:'Conditional interest only. No ticket is issued and no payment is taken. This isolated sample does not reserve a real venue or supplier.',hash:''};terms.hash=hashTerms(terms);
- return {id,version:1,mode:'SAMPLE',createdAt:now,expiresAt:new Date(Date.now()+24*60*60*1000).toISOString(),event:{id:'blue-hour',slug:'blue-hour',title:terms.title,lifecycle:'DRAFT',termsVersion:1,selectedConceptId:null,bookingPaused:false,operationalRisk:'CLEAR',publishedAt:null},
- venue:{id:'the-fold',name:'The Fold',neighborhood:'Peckham, London',address:terms.address,timezone:'Europe/London',capacity:48,soundLimitDb:78,curfew:'22:30',access:terms.access,availability:'AVAILABLE',confirmedAt:now,validUntil:new Date(Date.now()+24*60*60*1000).toISOString(),source:'Authored sample venue sheet · no real availability claimed'},
- brief:{ambition:'An intimate evening where music, good food, and strangers become a shared story.',date:'2026-11-14',doors:'18:30',end:'22:00',budgetMinor:160000,ticketPriceMinor:3200,audience:'Curious locals who love music, food, and discovering something a little unexpected.',anchors:['Khruangbin','Wong Kar-wai','Ottolenghi'],notes:'Seated and welcoming. Keep the sound warm, the menu seasonal, and the pace unhurried.'},concepts:[],
- suppliers:[
- {id:'low-lights',name:'Nila & The Low Lights',discipline:'Live music',initials:'NL',feeMinor:32000,description:'A warm three-piece set: guitar, bass, and a voice that fills the room.',status:'QUOTED',critical:true,confirmedAt:null,source:'Authored sample offer · £320 performance fee',influence:'Operator-described influences: Khruangbin, SAULT, and jazz. No direct Qloo match claimed.',scope:'One 50-minute acoustic set, 19:00–19:50. Soundcheck at 17:30. Maximum 78 dB.',token:token()},
- {id:'little-table',name:'Little Table',discipline:'Food & hospitality',initials:'LT',feeMinor:26000,description:'Generous seasonal sharing plates. Vegetarian by design, dietary details by confirmation.',status:'QUOTED',critical:true,confirmedAt:null,source:'Authored sample offer · £260 service + variable food costs',influence:'Operator-described approach: seasonal, colorful, shared.',scope:'A seated supper for up to 48 guests. Service 20:00–21:00. Confirm all allergen and access needs.',token:token()},
- {id:'frame-club',name:'Frame Club',discipline:'Film & conversation',initials:'FC',feeMinor:52000,description:'An independent short-film program and a thoughtful hosted conversation.',status:'QUOTED',critical:true,confirmedAt:null,source:'Authored sample offer · screening rights unverified',influence:'Editorial connection to intimate, place-led cinema.',scope:'A 70-minute short film program. Operator must confirm screening rights before greenlight.',token:token()},
- {id:'paper-sound',name:'Paper & Sound',discipline:'Records & printmaking',initials:'PS',feeMinor:16000,description:'A selector-led vinyl session with a simple one-color print workshop.',status:'QUOTED',critical:true,confirmedAt:null,source:'Authored sample offer · £160 facilitation fee',influence:'Operator-described record culture and tactile design.',scope:'Facilitated workshop 19:00–20:30. Materials and shared tables included in cost worksheet.',token:token()},
- {id:'sunday-people',name:'Sunday People',discipline:'Replacement live music',initials:'SP',feeMinor:36000,description:'A soulful acoustic duo with a gentle, groove-led sound.',status:'QUOTED',critical:true,confirmedAt:null,source:'Authored sample alternative · £360 fee, availability needs confirmation',influence:'Operator-confirmed influences: Cleo Sol and Michael Kiwanuka. Editorial fit, no direct Qloo score.',scope:'One 50-minute acoustic set at the same time and sound limit. Two performers, existing backline.',token:token()},
- ],
- requirements:[{id:'rights',label:'Music & media permissions',detail:'Owner accepts responsibility for the appropriate performance or screening permissions in this sample.',confirmed:false,proof:null},{id:'access',label:'Access & dietary plan',detail:'Confirm step-free access, an accessible toilet, seating, and a process for allergen requests.',confirmed:false,proof:null},{id:'safety',label:'Staffing & safety',detail:'A named duty manager, 48-person capacity, clear exits, and 22:30 curfew.',confirmed:false,proof:null}],terms,commitments:[],bookings:[],
- tasks:[{id:'room',label:'Room layout & clear exits',owner:'Alex · venue',due:'16:00',done:false,evidence:null,dependencyIds:[]},{id:'sound',label:'Soundcheck under 78 dB',owner:'Sam · sound',due:'17:30',done:false,evidence:null,dependencyIds:['room']},{id:'menu',label:'Menu & allergen briefing',owner:'Robin · Little Table',due:'17:45',done:false,evidence:null,dependencyIds:[]},{id:'front',label:'Front-of-house briefing',owner:'Alex · venue',due:'18:00',done:false,evidence:null,dependencyIds:['room','menu']},{id:'guest',label:'Guest list & access check',owner:'Alex · venue',due:'18:15',done:false,evidence:null,dependencyIds:['front']}],
- runOfShow:[{id:'setup',time:'16:00',title:'Set the room',detail:'One long table. Soft lighting. Forty-eight seats.',owner:'Venue team'},{id:'soundcheck',time:'17:30',title:'Find the right volume',detail:'Acoustic soundcheck · maximum 78 dB',owner:'Sam + performers'},{id:'doors',time:'18:30',title:'Doors & first conversations',detail:'Welcome drink, check-in, and a record on the turntable.',owner:'Front of house'},{id:'music',time:'19:00',title:'A set to settle into',detail:'Nila & The Low Lights · 50-minute live set',owner:'Nila & The Low Lights'},{id:'supper',time:'20:00',title:'Pass the plates',detail:'Seasonal supper, served family-style.',owner:'Little Table'},{id:'records',time:'21:00',title:'One more record',detail:'A softer close. A little room for conversation.',owner:'Venue selector'},{id:'close',time:'22:00',title:'Until next time',detail:'Guest departure before the 22:30 curfew.',owner:'Duty manager'}],approvals:[],
- evidence:[{id:'editorial-connection',title:'A shared feeling across music, film & food',origin:'AUTHORED_SAMPLE',body:'The three cultural anchors inspired this authored sample. Warm grooves, cinematic intimacy, and generous shared food form a coherent creative direction. No affinity result or audience prediction has been generated.',source:'ASSEMBLY sample editorial team',capturedAt:now,boundary:'An editorial hypothesis. It does not establish demand, rights, availability, or an individual’s preference.'},{id:'inventory-source',title:'A real constraint, in a fictional room',origin:'AUTHORED_SAMPLE',body:'The Fold has 48 seated places, a 78 dB sound limit, step-free access, and a 22:30 curfew in this authored scenario. All named offers are fictional.',source:'Local sample inventory v1',capturedAt:now,boundary:'No real venue, performer, or caterer is booked or represented.'},{id:'cost-calculation',title:'Costs follow the room, not an affinity score',origin:'APP_CALCULATION',body:'Fixed costs plus per-person costs determine the budget. Break-even is rounded up from fixed costs divided by ticket price less variable cost per guest.',source:'Deterministic cost worksheet · GBP minor units',capturedAt:now,boundary:'A scenario calculation, not a revenue forecast. Sample bookings have no paid transactions.'}],
- audit:[{id:token(),action:'WORKSPACE_CREATED',description:'An isolated sample workspace was created. No real events or contacts were imported.',at:now,version:1}],change:null,run:null,qloo:{status:'UNAVAILABLE',message:'Qloo is not connected. Concepts are authored examples; no live cultural evidence is claimed.',lastCheckedAt:null}};
+export function hashTerms(terms: Omit<Terms, "hash"> | Terms): string {
+  const { hash: _hash, ...clean } = terms as Terms;
+  void _hash;
+  return createHash("sha256").update(canonicalJson(clean)).digest("hex");
+}
+export function createWorkspace(
+  id: string,
+  mode: Workspace["mode"] = "SAMPLE",
+): Workspace {
+  if (mode === "REAL") return createRealWorkspace(id);
+  const now = new Date().toISOString();
+  const token = () => randomBytes(24).toString("hex");
+  const terms: Terms = {
+    capacity: 48,
+    soundLimitDb: 78,
+    curfew: "22:30",
+    timezone: "Europe/London",
+    version: 1,
+    title: "Blue hour, shared table.",
+    date: "2026-11-14",
+    doors: "18:30",
+    end: "22:00",
+    venue: "The Fold",
+    address: "18 Bellenden Road, Peckham, London · fictional sample venue",
+    priceMinor: 3200,
+    currency: "GBP",
+    program: "Nila & The Low Lights · a seasonal supper by Little Table",
+    access:
+      "Step-free entrance and accessible toilet. Seated event. Dietary needs must be confirmed with the host.",
+    conditional: true,
+    notice:
+      "Conditional interest only. No ticket is issued and no payment is taken. This isolated sample does not reserve a real venue or supplier.",
+    hash: "",
+  };
+  terms.hash = hashTerms(terms);
+  return {
+    id,
+    version: 1,
+    mode: "SAMPLE",
+    createdAt: now,
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    event: {
+      id,
+      slug: `event-${randomBytes(12).toString("hex")}`,
+      title: terms.title,
+      lifecycle: "DRAFT",
+      termsVersion: 1,
+      selectedConceptId: null,
+      bookingPaused: false,
+      operationalRisk: "CLEAR",
+      publishedAt: null,
+    },
+    venue: {
+      id: "the-fold",
+      name: "The Fold",
+      neighborhood: "Peckham, London",
+      address: terms.address,
+      timezone: "Europe/London",
+      capacity: 48,
+      soundLimitDb: 78,
+      curfew: "22:30",
+      access: terms.access,
+      availability: "AVAILABLE",
+      confirmedAt: now,
+      validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      source: "Authored sample venue sheet · no real availability claimed",
+    },
+    brief: {
+      ambition:
+        "An intimate evening where music, good food, and strangers become a shared story.",
+      date: "2026-11-14",
+      doors: "18:30",
+      end: "22:00",
+      overheadMinor: 20000,
+      perGuestMinor: 800,
+      budgetMinor: 160000,
+      ticketPriceMinor: 3200,
+      audience:
+        "Curious locals who love music, food, and discovering something a little unexpected.",
+      anchors: ["Khruangbin", "Wong Kar-wai", "Ottolenghi"],
+      notes:
+        "Seated and welcoming. Keep the sound warm, the menu seasonal, and the pace unhurried.",
+    },
+    concepts: [],
+    suppliers: [
+      {
+        id: "low-lights",
+        setupMinutes: 60,
+        durationMinutes: 50,
+        soundDb: 78,
+        variableCostMinor: 0,
+        rightsConfirmed: false,
+        availabilityConfirmed: false,
+        name: "Nila & The Low Lights",
+        discipline: "Live music",
+        initials: "NL",
+        feeMinor: 32000,
+        description:
+          "A warm three-piece set: guitar, bass, and a voice that fills the room.",
+        status: "QUOTED",
+        critical: true,
+        confirmedAt: null,
+        source: "Authored sample offer · £320 performance fee",
+        influence:
+          "Operator-described influences: Khruangbin, SAULT, and jazz. No direct Qloo match claimed.",
+        scope:
+          "One 50-minute acoustic set, 19:00–19:50. Soundcheck at 17:30. Maximum 78 dB.",
+        token: token(),
+      },
+      {
+        id: "little-table",
+        setupMinutes: 45,
+        durationMinutes: 45,
+        soundDb: 0,
+        variableCostMinor: 0,
+        rightsConfirmed: false,
+        availabilityConfirmed: false,
+        name: "Little Table",
+        discipline: "Food & hospitality",
+        initials: "LT",
+        feeMinor: 26000,
+        description:
+          "Generous seasonal sharing plates. Vegetarian by design, dietary details by confirmation.",
+        status: "QUOTED",
+        critical: true,
+        confirmedAt: null,
+        source: "Authored sample offer · £260 service + variable food costs",
+        influence: "Operator-described approach: seasonal, colorful, shared.",
+        scope:
+          "A seated supper for up to 48 guests. Service 20:00–21:00. Confirm all allergen and access needs.",
+        token: token(),
+      },
+      {
+        id: "frame-club",
+        setupMinutes: 60,
+        durationMinutes: 70,
+        soundDb: 70,
+        variableCostMinor: 0,
+        rightsConfirmed: false,
+        availabilityConfirmed: false,
+        name: "Frame Club",
+        discipline: "Film & conversation",
+        initials: "FC",
+        feeMinor: 52000,
+        description:
+          "An independent short-film program and a thoughtful hosted conversation.",
+        status: "QUOTED",
+        critical: true,
+        confirmedAt: null,
+        source: "Authored sample offer · screening rights unverified",
+        influence: "Editorial connection to intimate, place-led cinema.",
+        scope:
+          "A 70-minute short film program. Operator must confirm screening rights before greenlight.",
+        token: token(),
+      },
+      {
+        id: "paper-sound",
+        setupMinutes: 60,
+        durationMinutes: 90,
+        soundDb: 70,
+        variableCostMinor: 0,
+        rightsConfirmed: false,
+        availabilityConfirmed: false,
+        name: "Paper & Sound",
+        discipline: "Records & printmaking",
+        initials: "PS",
+        feeMinor: 16000,
+        description:
+          "A selector-led vinyl session with a simple one-color print workshop.",
+        status: "QUOTED",
+        critical: true,
+        confirmedAt: null,
+        source: "Authored sample offer · £160 facilitation fee",
+        influence: "Operator-described record culture and tactile design.",
+        scope:
+          "Facilitated workshop 19:00–20:30. Materials and shared tables included in cost worksheet.",
+        token: token(),
+      },
+      {
+        id: "sunday-people",
+        setupMinutes: 60,
+        durationMinutes: 50,
+        soundDb: 78,
+        variableCostMinor: 0,
+        rightsConfirmed: false,
+        availabilityConfirmed: false,
+        name: "Sunday People",
+        discipline: "Replacement live music",
+        initials: "SP",
+        feeMinor: 36000,
+        description: "A soulful acoustic duo with a gentle, groove-led sound.",
+        status: "QUOTED",
+        critical: true,
+        confirmedAt: null,
+        source:
+          "Authored sample alternative · £360 fee, availability needs confirmation",
+        influence:
+          "Operator-confirmed influences: Cleo Sol and Michael Kiwanuka. Editorial fit, no direct Qloo score.",
+        scope:
+          "One 50-minute acoustic set at the same time and sound limit. Two performers, existing backline.",
+        token: token(),
+      },
+    ],
+    requirements: [
+      {
+        id: "rights",
+        label: "Music & media permissions",
+        detail:
+          "Owner accepts responsibility for the appropriate performance or screening permissions in this sample.",
+        confirmed: false,
+        proof: null,
+      },
+      {
+        id: "access",
+        label: "Access & dietary plan",
+        detail:
+          "Confirm step-free access, an accessible toilet, seating, and a process for allergen requests.",
+        confirmed: false,
+        proof: null,
+      },
+      {
+        id: "safety",
+        label: "Staffing & safety",
+        detail:
+          "A named duty manager, 48-person capacity, clear exits, and 22:30 curfew.",
+        confirmed: false,
+        proof: null,
+      },
+    ],
+    terms,
+    commitments: [],
+    bookings: [],
+    tasks: [
+      {
+        id: "room",
+        label: "Room layout & clear exits",
+        owner: "Alex · venue",
+        due: "16:00",
+        done: false,
+        evidence: null,
+        dependencyIds: [],
+      },
+      {
+        id: "sound",
+        label: "Soundcheck under 78 dB",
+        owner: "Sam · sound",
+        due: "17:30",
+        done: false,
+        evidence: null,
+        dependencyIds: ["room"],
+      },
+      {
+        id: "menu",
+        label: "Menu & allergen briefing",
+        owner: "Robin · Little Table",
+        due: "17:45",
+        done: false,
+        evidence: null,
+        dependencyIds: [],
+      },
+      {
+        id: "front",
+        label: "Front-of-house briefing",
+        owner: "Alex · venue",
+        due: "18:00",
+        done: false,
+        evidence: null,
+        dependencyIds: ["room", "menu"],
+      },
+      {
+        id: "guest",
+        label: "Guest list & access check",
+        owner: "Alex · venue",
+        due: "18:15",
+        done: false,
+        evidence: null,
+        dependencyIds: ["front"],
+      },
+    ],
+    runOfShow: [
+      {
+        id: "setup",
+        time: "16:00",
+        title: "Set the room",
+        detail: "One long table. Soft lighting. Forty-eight seats.",
+        owner: "Venue team",
+      },
+      {
+        id: "soundcheck",
+        time: "17:30",
+        title: "Find the right volume",
+        detail: "Acoustic soundcheck · maximum 78 dB",
+        owner: "Sam + performers",
+      },
+      {
+        id: "doors",
+        time: "18:30",
+        title: "Doors & first conversations",
+        detail: "Welcome drink, check-in, and a record on the turntable.",
+        owner: "Front of house",
+      },
+      {
+        id: "music",
+        time: "19:00",
+        title: "A set to settle into",
+        detail: "Nila & The Low Lights · 50-minute live set",
+        owner: "Nila & The Low Lights",
+      },
+      {
+        id: "supper",
+        time: "20:00",
+        title: "Pass the plates",
+        detail: "Seasonal supper, served family-style.",
+        owner: "Little Table",
+      },
+      {
+        id: "records",
+        time: "21:00",
+        title: "One more record",
+        detail: "A softer close. A little room for conversation.",
+        owner: "Venue selector",
+      },
+      {
+        id: "close",
+        time: "22:00",
+        title: "Until next time",
+        detail: "Guest departure before the 22:30 curfew.",
+        owner: "Duty manager",
+      },
+    ],
+    approvals: [],
+    evidence: [
+      {
+        id: "editorial-connection",
+        title: "A shared feeling across music, film & food",
+        origin: "AUTHORED_SAMPLE",
+        body: "The three cultural anchors inspired this authored sample. Warm grooves, cinematic intimacy, and generous shared food form a coherent creative direction. No affinity result or audience prediction has been generated.",
+        source: "ASSEMBLY sample editorial team",
+        capturedAt: now,
+        boundary:
+          "An editorial hypothesis. It does not establish demand, rights, availability, or an individual’s preference.",
+      },
+      {
+        id: "inventory-source",
+        title: "A real constraint, in a fictional room",
+        origin: "AUTHORED_SAMPLE",
+        body: "The Fold has 48 seated places, a 78 dB sound limit, step-free access, and a 22:30 curfew in this authored scenario. All named offers are fictional.",
+        source: "Local sample inventory v1",
+        capturedAt: now,
+        boundary:
+          "No real venue, performer, or caterer is booked or represented.",
+      },
+      {
+        id: "cost-calculation",
+        title: "Costs follow the room, not an affinity score",
+        origin: "APP_CALCULATION",
+        body: "Fixed costs plus per-person costs determine the budget. Break-even is rounded up from fixed costs divided by ticket price less variable cost per guest.",
+        source: "Deterministic cost worksheet · GBP minor units",
+        capturedAt: now,
+        boundary:
+          "A scenario calculation, not a revenue forecast. Sample bookings have no paid transactions.",
+      },
+    ],
+    audit: [
+      {
+        id: token(),
+        action: "WORKSPACE_CREATED",
+        description:
+          "An isolated sample workspace was created. No real events or contacts were imported.",
+        at: now,
+        version: 1,
+      },
+    ],
+    change: null,
+    run: null,
+    qloo: {
+      status: "UNAVAILABLE",
+      message:
+        "Qloo is not connected. Concepts are authored examples; no live cultural evidence is claimed.",
+      lastCheckedAt: null,
+    },
+  };
+}
+
+function createRealWorkspace(id: string): Workspace {
+  const now = new Date().toISOString();
+  const sample = createWorkspace(id, "SAMPLE");
+  const terms: Terms = {
+    capacity: 1,
+    soundLimitDb: 0,
+    curfew: "22:00",
+    timezone: "Europe/London",
+    version: 1,
+    title: "Untitled gathering",
+    date: "",
+    doors: "18:00",
+    end: "21:00",
+    venue: "",
+    address: "",
+    priceMinor: 0,
+    currency: "GBP",
+    program: "",
+    access: "",
+    conditional: true,
+    notice:
+      "Conditional interest only. No seat is held until a free booking is confirmed. No payment is collected. Confirmation records possession of your private response link, not verified identity.",
+    hash: "",
+  };
+  terms.hash = hashTerms(terms);
+  return {
+    ...sample,
+    mode: "REAL",
+    expiresAt: new Date(Date.now() + 90 * 86400000).toISOString(),
+    event: { ...sample.event, title: terms.title, publicVersion: 1 },
+    venue: {
+      id: "venue",
+      name: "",
+      neighborhood: "",
+      address: "",
+      timezone: "Europe/London",
+      capacity: 1,
+      soundLimitDb: 0,
+      curfew: "22:00",
+      access: "",
+      availability: "UNCONFIRMED",
+      confirmedAt: "",
+      validUntil: "",
+      source: "",
+      confirmationMethod: "OWNER_ATTESTATION",
+    },
+    brief: {
+      ambition: "",
+      date: "",
+      doors: "18:00",
+      end: "21:00",
+      budgetMinor: 0,
+      ticketPriceMinor: 0,
+      overheadMinor: 0,
+      perGuestMinor: 0,
+      audience: "",
+      anchors: [],
+      notes: "",
+    },
+    concepts: [],
+    suppliers: [],
+    terms,
+    runOfShow: [],
+    evidence: [],
+    tasks: [
+      {
+        id: "room",
+        label: "Room, exits and capacity checked",
+        owner: "Operator",
+        due: "15:30",
+        done: false,
+        evidence: null,
+        dependencyIds: [],
+      },
+      {
+        id: "front",
+        label: "Staffing and guest access briefing",
+        owner: "Operator",
+        due: "17:30",
+        done: false,
+        evidence: null,
+        dependencyIds: ["room"],
+      },
+    ],
+    requirements: sample.requirements.map((r) => ({
+      ...r,
+      detail:
+        r.id === "rights"
+          ? "Record the permissions needed for the actual program, or evidence that none are required."
+          : r.id === "access"
+            ? "Confirm the actual access and dietary arrangements."
+            : "Record responsible staffing, safe capacity, exits and curfew.",
+    })),
+    audit: [
+      {
+        id: randomBytes(16).toString("hex"),
+        action: "WORKSPACE_CREATED",
+        description:
+          "A blank real operations workspace was created. Inventory and outcomes require explicit human evidence.",
+        at: now,
+        version: 1,
+      },
+    ],
+    feedback: [],
+    qloo: {
+      status: "UNAVAILABLE",
+      message:
+        "Live research requires explicitly selected catalog anchors. No research has run.",
+      lastCheckedAt: null,
+    },
+  };
+}
+
+export function hashSupplierOffer(
+  w: Workspace,
+  s: Workspace["suppliers"][number],
+): string {
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        supplierId: s.id,
+        capacity: w.venue.capacity,
+        soundLimitDb: w.venue.soundLimitDb,
+        curfew: w.venue.curfew,
+        timezone: w.venue.timezone,
+        date: w.terms.date,
+        doors: w.terms.doors,
+        end: w.terms.end,
+        venue: w.terms.venue,
+        address: w.terms.address,
+        access: w.terms.access,
+        scope: s.scope,
+        feeMinor: s.feeMinor,
+        currency: w.terms.currency,
+        ...(s.programStart !== undefined ||
+        s.setupStart !== undefined ||
+        s.canOverlap !== undefined
+          ? {
+              schedule: {
+                programStart: s.programStart,
+                durationMinutes: s.durationMinutes,
+                setupStart: s.setupStart,
+                setupMinutes: s.setupMinutes,
+                canOverlap: s.canOverlap === true,
+              },
+            }
+          : {}),
+      }),
+    )
+    .digest("hex");
 }

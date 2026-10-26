@@ -48,13 +48,13 @@ export function Overview() {
         : stage === "VALIDATION_OPEN"
           ? {
               title: "Listen to your audience.",
-              body: "Your conditional proposal is open. A verified choice is the next useful signal.",
+              body: "Your conditional proposal is open. A confirmed choice is the next useful signal.",
               cta: "View audience response",
             }
           : stage === "COMPLETED"
             ? {
                 title: "A night, made together.",
-                body: "Review the observed sample outcomes and what the numbers actually mean.",
+                body: "Review the recorded outcomes and what the numbers actually mean.",
                 cta: "See the outcome",
               }
             : {
@@ -85,17 +85,27 @@ export function Overview() {
         <h2>
           On the horizon <span>01</span>
         </h2>
-        <Link href="/studio/venues/the-fold">
+        <Link href="/studio/venue">
           View your space <ArrowUpRight size={14} />
         </Link>
       </div>
       <div className="overview-feature">
         <Link
           className="overview-poster"
-          href={`/studio/events/blue-hour/${target}`}
-          aria-label="Open Blue hour production"
+          href={`/studio/events/current/${target}`}
+          aria-label="Open this production"
         >
-          <Poster variant={concept?.art || "blue-hour"} compact />
+          <Poster
+            variant={concept?.art || "blue-hour"}
+            compact
+            title={w.event.title}
+            venueName={w.venue.name}
+            date={w.terms.date}
+            doors={w.terms.doors}
+            location={w.venue.neighborhood}
+            capacity={w.venue.capacity}
+            category={concept?.category}
+          />
         </Link>
         <div className="overview-production">
           <div className="overview-production-top">
@@ -116,7 +126,7 @@ export function Overview() {
           </h2>
           <p>
             {concept?.subtitle ||
-              "A listening supper for a room full of curious people."}
+              "A few good ingredients. An evening still to make."}
           </p>
           <div className="overview-meta">
             <span>
@@ -135,11 +145,11 @@ export function Overview() {
           <div className="overview-mini-stats">
             <div>
               <strong>{counts.verified}</strong>
-              <span>verified choices</span>
+              <span>confirmed choices</span>
             </div>
             <div>
               <strong>{counts.bookings}</strong>
-              <span>sample bookings</span>
+              <span>allocated places</span>
             </div>
             <div>
               <strong>
@@ -148,7 +158,7 @@ export function Overview() {
               <span>confirmed suppliers</span>
             </div>
           </div>
-          <ButtonLink href={`/studio/events/blue-hour/${target}`}>
+          <ButtonLink href={`/studio/events/current/${target}`}>
             Continue the production <ArrowRight size={16} />
           </ButtonLink>
         </div>
@@ -162,7 +172,7 @@ export function Overview() {
           </div>
           <h3>{next.title}</h3>
           <p>{next.body}</p>
-          <Link href={`/studio/events/blue-hour/${target}`}>
+          <Link href={`/studio/events/current/${target}`}>
             {next.cta}
             <ArrowUpRight size={16} />
           </Link>
@@ -183,7 +193,7 @@ export function Overview() {
               <div className="room-window" />
               <div className="room-table" />
               <div className="room-lamp" />
-              <span>THE FOLD</span>
+              <span>{w.venue.name}</span>
             </div>
             <div>
               <Badge
@@ -192,7 +202,9 @@ export function Overview() {
                 }
               >
                 {w.venue.availability === "AVAILABLE"
-                  ? "Sample availability confirmed"
+                  ? w.mode === "SAMPLE"
+                    ? "Sample availability confirmed"
+                    : "Operator availability confirmed"
                   : "Availability needs confirmation"}
               </Badge>
               <h3>{w.venue.name}</h3>
@@ -205,7 +217,7 @@ export function Overview() {
                 <span>Access on venue sheet</span>
                 <span>{w.venue.curfew} curfew</span>
               </div>
-              <Link className="text-link" href="/studio/venues/the-fold">
+              <Link className="text-link" href="/studio/venue">
                 Know your space <ArrowRight size={15} />
               </Link>
             </div>
@@ -223,7 +235,11 @@ export function Overview() {
           <div className="notes-rows">
             <div>
               <span className="notes-number">01</span>
-              <strong>Authored ideas</strong>
+              <strong>
+                {w.qloo.status === "LIVE"
+                  ? "Live cultural evidence"
+                  : "Sourced ideas"}
+              </strong>
               <span>Clearly labeled</span>
             </div>
             <div>
@@ -233,8 +249,10 @@ export function Overview() {
             </div>
             <div>
               <span className="notes-number">03</span>
-              <strong>Sample operations</strong>
-              <span>Nothing sent or charged</span>
+              <strong>
+                {w.mode === "SAMPLE" ? "Sample operations" : "Your operations"}
+              </strong>
+              <span>Nothing automatically sent</span>
             </div>
           </div>
         </section>

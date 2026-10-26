@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
@@ -13,9 +13,10 @@ import {
   Utensils,
   X,
 } from "lucide-react";
-import type { Brief } from "@assembly/contracts";
+import { assessOfferSchedule, type Brief } from "@assembly/contracts";
 import { useWorkspace } from "../workspace-context";
 import { Button, Badge } from "../ui";
+import { CulturalCatalog } from "./cultural-catalog";
 export function BriefView() {
   const { workspace: w } = useWorkspace();
   if (!w) return null;
@@ -31,9 +32,54 @@ function BriefForm({ initial }: { initial: Brief }) {
   const [brief, setBrief] = useState(initial);
   const [anchor, setAnchor] = useState("");
   const [dirty, setDirty] = useState(false);
+  const [researchMode, setResearchMode] = useState<"LIVE" | "SAMPLE">("LIVE");
+  const [reviewTime, setReviewTime] = useState(() => Date.now());
+  useEffect(() => {
+    const refreshTime = () => setReviewTime(Date.now());
+    const timer = window.setInterval(refreshTime, 60000);
+    window.addEventListener("focus", refreshTime);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refreshTime);
+    };
+  }, []);
   const router = useRouter();
   if (!w) return null;
-  const locked = !["DRAFT", "CONCEPT_READY"].includes(w.event.lifecycle);
+  const locked =
+    !["DRAFT", "CONCEPT_READY"].includes(w.event.lifecycle) ||
+    w.run?.status === "QUEUED" ||
+    w.run?.status === "RUNNING";
+  const timingChecks = w.suppliers.map((offer) => {
+    const schedule = assessOfferSchedule([offer], brief.doors, brief.end);
+    const issues = [
+      ...schedule.violations,
+      ...schedule.unresolvedProgram,
+      ...schedule.unresolvedSetup,
+    ];
+    if (offer.status === "UNAVAILABLE")
+      issues.push("This offer is marked unavailable.");
+    if (
+      (w.mode === "REAL" || offer.validUntil !== undefined) &&
+      (!offer.validUntil ||
+        !Number.isFinite(Date.parse(offer.validUntil)) ||
+        Date.parse(offer.validUntil) <= reviewTime)
+    )
+      issues.push(`Record a current quote review date for ${offer.name}.`);
+    const fullCost =
+      offer.feeMinor +
+      (brief.overheadMinor ?? (w.mode === "REAL" ? 0 : 20000)) +
+      (brief.perGuestMinor ?? (w.mode === "REAL" ? 0 : 800)) * w.venue.capacity;
+    if (fullCost > brief.budgetMinor)
+      issues.push(
+        "This offer and the entered room costs exceed the full-room budget.",
+      );
+    if (offer.soundDb !== undefined && offer.soundDb > w.venue.soundLimitDb)
+      issues.push("This offer exceeds the room’s sound limit.");
+    return { offer, issues };
+  });
+  const timedOffers = timingChecks.filter(
+    ({ issues }) => issues.length === 0,
+  ).length;
   const update = <K extends keyof Brief>(key: K, value: Brief[K]) => {
     setBrief((b) => ({ ...b, [key]: value }));
     setDirty(true);
@@ -49,12 +95,22 @@ function BriefForm({ initial }: { initial: Brief }) {
     }
   };
   async function save(research = false) {
-    const saved = await act("SAVE_BRIEF", { brief });
+    const saved = await act("SAVE_BRIEF", {
+      brief: {
+        ...brief,
+        ticketPriceMinor: w?.mode === "REAL" ? 0 : brief.ticketPriceMinor,
+        overheadMinor: brief.overheadMinor ?? (w?.mode === "REAL" ? 0 : 20000),
+        perGuestMinor: brief.perGuestMinor ?? (w?.mode === "REAL" ? 0 : 800),
+        anchors: w?.research?.anchors.length
+          ? w.research.anchors.map((a) => a.name)
+          : brief.anchors,
+      },
+    });
     if (saved.ok) {
       setDirty(false);
       if (research) {
-        const result = await act("RESEARCH", { mode: "SAMPLE" });
-        if (result.ok) router.push("/studio/events/blue-hour/concepts");
+        const result = await act("RESEARCH", { mode: researchMode });
+        if (result.ok) router.push("/studio/events/current/concepts");
       }
     }
   }
@@ -93,10 +149,11 @@ function BriefForm({ initial }: { initial: Brief }) {
           </label>
           <div className="field">
             <span>
-              Cultural starting points <small>UP TO 10</small>
+              Editorial starting notes <small>UP TO 10</small>
             </span>
             <p className="field-hint">
-              Artists, films, people, or places that set the mood.
+              Names that set the mood. Confirm their catalog identities below
+              for live research.
             </p>
             <div className="anchor-chips">
               {brief.anchors.map((a, i) => (
@@ -153,9 +210,11 @@ function BriefForm({ initial }: { initial: Brief }) {
             ) : null}
             <div className="inline-hint">
               <Info size={12} />
-              Editorial inputs. Entity resolution needs a live Qloo connection.
+              These notes alone are not Qloo evidence or confirmed entity
+              matches.
             </div>
           </div>
+          <CulturalCatalog locked={locked} />
           <div className="form-divider">
             <span>THE PRACTICAL PART</span>
           </div>
@@ -219,17 +278,21 @@ function BriefForm({ initial }: { initial: Brief }) {
             </label>
             <label className="field">
               <span>
-                Proposed ticket price <small>GBP</small>
+                {w.mode === "REAL"
+                  ? "Guest price · free admission"
+                  : "Proposed ticket price"}{" "}
+                <small>GBP</small>
               </span>
               <div className="input-prefix">
                 <span>£</span>
                 <input
                   type="number"
-                  min={1}
+                  min={0}
                   max={1000}
                   step=".01"
                   disabled={locked}
-                  value={brief.ticketPriceMinor / 100}
+                  value={w.mode === "REAL" ? 0 : brief.ticketPriceMinor / 100}
+                  readOnly={w.mode === "REAL"}
                   onChange={(e) =>
                     update(
                       "ticketPriceMinor",
@@ -239,8 +302,67 @@ function BriefForm({ initial }: { initial: Brief }) {
                 />
               </div>
               <p className="field-hint">
-                A condition to test. No payment is collected.
+                {w.mode === "REAL"
+                  ? "Your funded budget covers the costs. Guests book for free."
+                  : "A hypothetical condition to test. No payment is collected."}
               </p>
+            </label>
+          </div>
+          <div className="form-grid">
+            <label className="field">
+              <span>
+                Room & other fixed costs <small>GBP</small>
+              </span>
+              <div className="input-prefix">
+                <span>£</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={1000000}
+                  step="0.01"
+                  required
+                  disabled={locked}
+                  value={
+                    (brief.overheadMinor ?? (w.mode === "REAL" ? 0 : 20000)) /
+                    100
+                  }
+                  onChange={(e) =>
+                    update(
+                      "overheadMinor",
+                      Math.round(Number(e.target.value) * 100),
+                    )
+                  }
+                />
+              </div>
+              <p className="field-hint">
+                Add staffing, equipment and contingency to supplier fees.
+              </p>
+            </label>
+            <label className="field">
+              <span>
+                Costs per guest <small>GBP</small>
+              </span>
+              <div className="input-prefix">
+                <span>£</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={1000}
+                  step="0.01"
+                  required
+                  disabled={locked}
+                  value={
+                    (brief.perGuestMinor ?? (w.mode === "REAL" ? 0 : 800)) / 100
+                  }
+                  onChange={(e) =>
+                    update(
+                      "perGuestMinor",
+                      Math.round(Number(e.target.value) * 100),
+                    )
+                  }
+                />
+              </div>
+              <p className="field-hint">Enter 0 if included in fixed offers.</p>
             </label>
           </div>
           <label className="field">
@@ -269,10 +391,18 @@ function BriefForm({ initial }: { initial: Brief }) {
           </label>
           <div className="form-actions">
             <span className="form-save-state">
-              {locked ? (
+              {w.event.publishedAt ? (
                 <>
                   <Check size={13} />
                   Published brief · edits require a versioned change
+                </>
+              ) : locked ? (
+                <>
+                  <span className="status-dot" />
+                  {w.research?.search?.status === "QUEUED" ||
+                  w.research?.search?.status === "RUNNING"
+                    ? "Catalog search in progress · editing paused"
+                    : "Research in progress · editing paused"}
                 </>
               ) : dirty ? (
                 <>
@@ -282,7 +412,7 @@ function BriefForm({ initial }: { initial: Brief }) {
               ) : (
                 <>
                   <Check size={13} />
-                  Saved in your sample workspace
+                  Saved in your production workspace
                 </>
               )}
             </span>
@@ -299,13 +429,99 @@ function BriefForm({ initial }: { initial: Brief }) {
                 <Button
                   type="submit"
                   busy={busy === "RESEARCH"}
-                  disabled={!!busy || brief.anchors.length === 0}
+                  disabled={
+                    !!busy ||
+                    (researchMode === "LIVE"
+                      ? !w.research?.anchors.length || timedOffers < 2
+                      : brief.anchors.length === 0)
+                  }
                 >
-                  Explore sample concepts <ArrowRight size={16} />
+                  {researchMode === "LIVE"
+                    ? "Compose with live evidence"
+                    : "Explore authored concepts"}{" "}
+                  <ArrowRight size={16} />
                 </Button>
               </div>
             ) : null}
           </div>
+          {!locked ? (
+            <div className="research-mode-picker">
+              <label className={researchMode === "LIVE" ? "selected" : ""}>
+                <input
+                  type="radio"
+                  name="research-mode"
+                  checked={researchMode === "LIVE"}
+                  onChange={() => setResearchMode("LIVE")}
+                />
+                <span>
+                  <strong>Live Qloo + AI producer</strong>
+                  <small>
+                    Confirmed anchors, your offers, a bounded research run.
+                  </small>
+                </span>
+              </label>
+              {w.mode === "SAMPLE" ? (
+                <label className={researchMode === "SAMPLE" ? "selected" : ""}>
+                  <input
+                    type="radio"
+                    name="research-mode"
+                    checked={researchMode === "SAMPLE"}
+                    onChange={() => setResearchMode("SAMPLE")}
+                  />
+                  <span>
+                    <strong>Authored rehearsal</strong>
+                    <small>
+                      Three written examples. No live provider request.
+                    </small>
+                  </span>
+                </label>
+              ) : null}
+              {researchMode === "LIVE" && !w.research?.anchors.length ? (
+                <p>
+                  Choose at least one exact catalog match above to compose with
+                  live evidence.
+                </p>
+              ) : null}
+              {researchMode === "LIVE" && !w.suppliers.length ? (
+                <p>
+                  Add supplier offers in{" "}
+                  <a href="/studio/suppliers">People & offers</a> first.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+          {!locked &&
+          researchMode === "LIVE" &&
+          (timedOffers < 2 ||
+            timingChecks.some(({ issues }) => issues.length)) ? (
+            <div className="schedule-review" role="status">
+              <strong>
+                {timedOffers >= 2
+                  ? `${timedOffers} workable offers are ready to consider.`
+                  : "Complete two workable offers before composing."}
+              </strong>
+              <p>
+                {timedOffers >= 2
+                  ? "You can compose with the ready offers. These alternatives still need review before they can be confirmed or published:"
+                  : `The producer needs at least two different inventory combinations. ${timedOffers} of 2 offers are ready. Enter program and setup times within the event window, with costs and sound that fit the room. Extra incomplete alternatives can stay in your inventory.`}
+              </p>
+              <ul>
+                {timingChecks
+                  .filter(({ issues }) => issues.length)
+                  .map(({ offer, issues }) => (
+                    <li key={offer.id}>
+                      <a
+                        href={`/studio/suppliers#offer-${encodeURIComponent(offer.id)}`}
+                      >
+                        {offer.name}
+                      </a>
+                      {": "}
+                      {issues.join(" ")}
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          ) : null}
         </form>
       </section>
       <aside className="brief-aside">
@@ -348,7 +564,7 @@ function BriefForm({ initial }: { initial: Brief }) {
               <dd>See venue sheet</dd>
             </div>
           </dl>
-          <a className="text-link" href="/studio/venues/the-fold">
+          <a className="text-link" href="/studio/venue">
             Review venue details <ArrowUpRight size={14} />
           </a>
         </div>
@@ -365,10 +581,15 @@ function BriefForm({ initial }: { initial: Brief }) {
         <div className="qloo-status">
           <BookOpen size={18} />
           <div>
-            <strong>Qloo is not connected</strong>
+            <strong>
+              {w.qloo.status === "LIVE"
+                ? "Live Qloo evidence is saved"
+                : "Two sources. One considered plan."}
+            </strong>
             <p>
-              This run loads three authored sample treatments. Live entity
-              resolution and recommendations remain unavailable.
+              Qloo finds cultural connections. The AI producer proposes a
+              program using your entered offers and costs. Publication remains
+              your decision.
             </p>
           </div>
         </div>

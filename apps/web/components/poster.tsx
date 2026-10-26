@@ -4,35 +4,77 @@ export function Poster({
   variant = "blue-hour",
   className,
   compact = false,
+  title,
+  venueName,
+  date,
+  doors,
+  location,
+  capacity,
+  category,
 }: {
   variant?: "blue-hour" | "night-garden" | "soft-signal";
   className?: string;
   compact?: boolean;
+  title?: string;
+  venueName?: string;
+  date?: string;
+  doors?: string;
+  location?: string;
+  capacity?: number;
+  category?: string;
 }) {
   const id = useId().replaceAll(":", "");
+  const words = title?.replace(/\.$/, "").split(/\s+/) ?? [];
+  const splitAt = Math.max(1, Math.ceil(words.length / 2));
+  const dateLabel = date
+    ? new Date(`${date}T12:00:00Z`)
+        .toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "short",
+          timeZone: "UTC",
+        })
+        .toUpperCase()
+    : date !== undefined
+      ? "DATE TO CHOOSE"
+      : "14 NOV";
   return (
     <div
       className={clsx(
         "poster",
         `poster-${variant}`,
         compact && "poster-compact",
+        title && "poster-personalized",
         className,
       )}
       role="img"
       aria-label={
-        variant === "blue-hour"
-          ? "Original Blue Hour poster: a coral sun above a midnight blue table, with abstract vinyl grooves."
-          : variant === "night-garden"
-            ? "Original Night Garden poster: lime leaves and a moon against deep plum."
-            : "Original Soft Signals poster: sculptural cobalt sound waves on golden paper."
+        title
+          ? `Original geometric event poster for ${title}.`
+          : variant === "blue-hour"
+            ? "Original Blue Hour poster: a coral sun above a midnight blue table, with abstract vinyl grooves."
+            : variant === "night-garden"
+              ? "Original Night Garden poster: lime leaves and a moon against deep plum."
+              : "Original Soft Signals poster: sculptural cobalt sound waves on golden paper."
       }
     >
       <div className="poster-top">
-        <span>THE FOLD PRESENTS</span>
+        <span>
+          {venueName !== undefined
+            ? venueName
+              ? `${venueName.toUpperCase()} PRESENTS`
+              : "YOUR ROOM, YOUR EVENING"
+            : "THE FOLD PRESENTS"}
+        </span>
         <span>EST. FOR ONE NIGHT</span>
       </div>
       <div className="poster-title">
-        {variant === "blue-hour" ? (
+        {title ? (
+          <>
+            {words.slice(0, splitAt).join(" ")}
+            <br />
+            <em>{words.slice(splitAt).join(" ") || "together."}</em>
+          </>
+        ) : variant === "blue-hour" ? (
           <>
             Blue
             <br />
@@ -146,16 +188,24 @@ export function Poster({
       </svg>
       <div className="poster-bottom">
         <span>
-          {variant === "blue-hour"
-            ? "A LISTENING SUPPER"
-            : variant === "night-garden"
-              ? "FILM, FOOD & AFTERTHOUGHTS"
-              : "RECORDS, CONVERSATION & MAKING"}
+          {category ||
+            (title
+              ? "AN EVENING TO SHAPE"
+              : variant === "blue-hour"
+                ? "A LISTENING SUPPER"
+                : variant === "night-garden"
+                  ? "FILM, FOOD & AFTERTHOUGHTS"
+                  : "RECORDS, CONVERSATION & MAKING")}
         </span>
         <strong>
-          14 NOV <i>·</i> 18:30
+          {dateLabel} <i>·</i> {doors || "18:30"}
         </strong>
-        <span>PECKHAM, LONDON / 48 PLACES</span>
+        <span>
+          {location !== undefined
+            ? location || "LOCATION TO CONFIRM"
+            : "PECKHAM, LONDON"}{" "}
+          / {capacity ?? 48} PLACES
+        </span>
       </div>
     </div>
   );

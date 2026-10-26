@@ -1,6 +1,7 @@
-import { ArrowRight, ArrowUpRight, Check, Info } from "lucide-react";
-import { PublicHeader, PublicFooter, Badge, ButtonLink } from "@/components/ui";
+import { ArrowUpRight, Info } from "lucide-react";
+import { PublicHeader, PublicFooter } from "@/components/ui";
 import { Poster } from "@/components/poster";
+import { WorkspaceStart } from "@/components/workspace-start";
 export const metadata = { title: "A room full of possibility" };
 export default function Demo() {
   return (
@@ -15,9 +16,9 @@ export default function Demo() {
             <em>Your call.</em>
           </h1>
           <p>
-            Step into The Fold, an independent space with an open Saturday
-            evening. A few good ingredients are already on the table. What
-            happens next is up to you.
+            An unused evening can become something people choose. Start with our
+            fictional room, or bring the one you know. What happens next is up
+            to you.
           </p>
           <div className="demo-facts">
             <div>
@@ -33,31 +34,20 @@ export default function Demo() {
               <span>production budget</span>
             </div>
           </div>
-          <div className="demo-mode">
-            <div>
-              <Badge tone="positive">Ready to explore</Badge>
-              <h2>An isolated sample studio</h2>
-              <p>
-                Fictional venue and suppliers. Authored cultural concepts. Real
-                application state, saved as you go.
-              </p>
-            </div>
-            <Check size={22} />
-          </div>
+          <WorkspaceStart />
           <div className="demo-qloo">
             <Info size={17} />
             <p>
-              Qloo is not connected yet. Every creative connection is labeled as
-              an authored example. Live research requires a server-side API key.
+              Qloo connects cultural references. The AI producer composes the
+              possibilities. Availability, costs, rights and every consequential
+              decision stay with people.
             </p>
           </div>
-          <ButtonLink href="/studio">
-            Open my production desk <ArrowRight size={18} />
-          </ButtonLink>
           <div className="demo-fine">
-            No account. No charges. No real bookings.
+            No account. No charges. Your desk is private to this browser.
             <br />
-            Your sample workspace expires after 24 hours.
+            Rehearsals expire after 24 hours. Save your participant links
+            separately.
           </div>
         </div>
         <div className="demo-poster">

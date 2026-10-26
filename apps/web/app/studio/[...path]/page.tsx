@@ -6,9 +6,12 @@ export default async function StudioSection({
   params: Promise<{ path: string[] }>;
 }) {
   const { path } = await params;
+  if (path.length === 1 && ["venue", "suppliers"].includes(path[0]))
+    return <StudioApp tab={path[0]} />;
   if (path[0] === "venues" && path[1] === "the-fold" && path.length === 2)
     return <StudioApp tab="venue" />;
-  if (path[0] !== "events" || path[1] !== "blue-hour") notFound();
+  if (path[0] !== "events" || !["current", "blue-hour"].includes(path[1]))
+    notFound();
   if (path[2] === "changes" && path.length === 4)
     return <StudioApp tab="changes" />;
   if (

@@ -39,6 +39,7 @@ import { eventDate } from "@/lib/format";
 import { Logo, Button, ButtonLink, Badge } from "./ui";
 import { useWorkspace } from "./workspace-context";
 import { EvidenceDrawer } from "./evidence-drawer";
+import { WorkspaceMenu } from "./workspace-menu";
 const links = [
   { tab: "brief", label: "The brief", icon: FileText },
   { tab: "concepts", label: "Concepts", icon: AudioLines },
@@ -149,13 +150,14 @@ export function StudioShell({
             <DoorOpen size={18} />
           </span>
           <div>
-            <strong>{w?.venue.name || "The Fold"}</strong>
-            <small>{w?.venue.neighborhood || "Peckham, London"}</small>
+            <strong>{w?.venue.name || "Your venue"}</strong>
+            <small>{w?.venue.neighborhood || "A room with possibility"}</small>
           </div>
-          <Badge dot={false}>SAMPLE</Badge>
+          <Badge dot={false}>{w?.mode === "REAL" ? "OWN" : "SAMPLE"}</Badge>
         </div>
         <div className="nav-heading">YOUR SPACE</div>
         <nav aria-label="Studio navigation">
+          <WorkspaceMenu />
           <Link
             className={clsx("nav-link", tab === "overview" && "active")}
             href="/studio"
@@ -166,24 +168,35 @@ export function StudioShell({
           </Link>
           <Link
             className={clsx("nav-link", tab === "venue" && "active")}
-            href="/studio/venues/the-fold"
+            href="/studio/venue"
             onClick={() => setMobile(false)}
           >
             <CalendarDays size={17} />
             Venue & availability
           </Link>
         </nav>
+        <Link
+          className={clsx("nav-link", tab === "suppliers" && "active")}
+          href="/studio/suppliers"
+          onClick={() => setMobile(false)}
+        >
+          <Users size={17} />
+          People & offers
+        </Link>
         <div className="nav-heading production-nav-heading">
           IN PRODUCTION<span>01</span>
         </div>
         <Link
           className="sidebar-event"
-          href="/studio/events/blue-hour/brief"
+          href="/studio/events/current/brief"
           onClick={() => setMobile(false)}
         >
           <div className="mini-poster">
             <span>
-              b<em>h</em>
+              {(w?.event.title.split(/\s+/)[0]?.[0] || "a").toLowerCase()}
+              <em>
+                {(w?.event.title.split(/\s+/)[1]?.[0] || "s").toLowerCase()}
+              </em>
             </span>
           </div>
           <div>
@@ -192,7 +205,7 @@ export function StudioShell({
                 "Your evening"}
             </strong>
             <small>
-              {w ? eventDate(w.terms.date, true) : "14 Nov"} ·{" "}
+              {w ? eventDate(w.terms.date, true) : "Date to choose"} ·{" "}
               {w?.venue.capacity || 48} places
             </small>
           </div>
@@ -201,7 +214,7 @@ export function StudioShell({
           {links.map((l, i) => (
             <Link
               className={clsx("nav-link", tab === l.tab && "active")}
-              href={`/studio/events/blue-hour/${l.tab}`}
+              href={`/studio/events/current/${l.tab}`}
               key={l.tab}
               onClick={() => setMobile(false)}
             >
@@ -213,7 +226,7 @@ export function StudioShell({
         </nav>
         <Link
           className="sidebar-create"
-          href="/studio/events/blue-hour/brief"
+          href="/studio/events/current/brief"
           onClick={() => setMobile(false)}
         >
           <Plus size={15} />
@@ -225,10 +238,12 @@ export function StudioShell({
             Evidence & sources
             <ArrowUpRight size={13} />
           </button>
-          <button className="nav-link" onClick={() => setResetOpen(true)}>
-            <RotateCcw size={16} />
-            Reset sample
-          </button>
+          {w?.mode === "SAMPLE" ? (
+            <button className="nav-link" onClick={() => setResetOpen(true)}>
+              <RotateCcw size={16} />
+              Reset sample
+            </button>
+          ) : null}
           <Link className="nav-link" href="/">
             <ArrowDownLeft size={16} />
             Back to Assembly
@@ -236,8 +251,8 @@ export function StudioShell({
           <div className="sidebar-user">
             <span className="avatar">A</span>
             <div>
-              <strong>Alex Morgan</strong>
-              <small>Sample studio owner</small>
+              <strong>Your private desk</strong>
+              <small>Owner access · this browser</small>
             </div>
             <ShieldCheck size={16} />
           </div>
@@ -281,7 +296,11 @@ export function StudioShell({
                   ? "Opening studio…"
                   : "Saved to your workspace"}
             </span>
-            <Badge tone="warning">Sample operations</Badge>
+            <Badge tone={w?.mode === "REAL" ? "neutral" : "warning"}>
+              {w?.mode === "REAL"
+                ? "Operator-owned production"
+                : "Sample operations"}
+            </Badge>
           </div>
         </header>
         <main id="main" tabIndex={-1} className="studio-main">
@@ -332,7 +351,7 @@ export function StudioShell({
             </div>
           ) : (
             <>
-              {!["overview", "venue"].includes(tab) ? (
+              {!["overview", "venue", "suppliers"].includes(tab) ? (
                 <>
                   <div className="event-heading">
                     <div>
@@ -375,8 +394,18 @@ export function StudioShell({
                         <BookOpen size={15} />
                         See the thinking
                       </button>
-                      <ButtonLink href="/events/blue-hour" variant="secondary">
-                        Public page <ExternalLink size={14} />
+                      <ButtonLink
+                        href={
+                          w.event.publishedAt
+                            ? `/events/${w.event.slug}`
+                            : "/studio/events/current/demand"
+                        }
+                        variant="secondary"
+                      >
+                        {w.event.publishedAt
+                          ? "Public page"
+                          : "Proposal preview"}{" "}
+                        <ExternalLink size={14} />
                       </ButtonLink>
                     </div>
                   </div>
@@ -384,7 +413,7 @@ export function StudioShell({
                     {links.map((l, i) => (
                       <Link
                         key={l.tab}
-                        href={`/studio/events/blue-hour/${l.tab}`}
+                        href={`/studio/events/current/${l.tab}`}
                         className={clsx(
                           tab === l.tab && "current",
                           i < progress && "complete",
@@ -409,8 +438,13 @@ export function StudioShell({
               <div className="studio-footnote">
                 <span>
                   <Circle size={7} />
-                  Isolated sample workspace · no real messages, payments, or
-                  reservations
+                  {w.mode === "SAMPLE"
+                    ? "Fictional rehearsal · sample operations"
+                    : "Operator-owned production · free places"}{" "}
+                  ·{" "}
+                  {w.qloo.status === "LIVE"
+                    ? "Live Qloo evidence"
+                    : "Evidence labelled by source"}
                 </span>
                 <button onClick={() => setEvidence(true)}>
                   About this evidence <ArrowUpRight size={12} />

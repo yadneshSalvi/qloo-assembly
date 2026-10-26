@@ -6,8 +6,10 @@ export async function POST(request: Request) {
     const input = await body(request);
     if (
       Object.keys(input).some(
-        (k) => !["expectedVersion", "idempotencyKey"].includes(k),
+        (k) =>
+          !["workspaceId", "expectedVersion", "idempotencyKey"].includes(k),
       ) ||
+      typeof input.workspaceId !== "string" ||
       !Number.isSafeInteger(input.expectedVersion) ||
       typeof input.idempotencyKey !== "string"
     )
@@ -21,6 +23,7 @@ export async function POST(request: Request) {
         await token(),
         input.expectedVersion as number,
         input.idempotencyKey,
+        input.workspaceId as string,
       ),
     );
   } catch (error) {

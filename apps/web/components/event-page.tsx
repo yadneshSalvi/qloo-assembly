@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   ArrowDown,
   ArrowRight,
-  ArrowUpRight,
   AudioLines,
   CalendarDays,
   Check,
@@ -16,24 +15,26 @@ import {
   Utensils,
   AlertCircle,
 } from "lucide-react";
-import { formatMoney, selectedConcept } from "@assembly/contracts";
-import { WorkspaceProvider, useWorkspace } from "./workspace-context";
-import { PublicHeader, PublicFooter, Button, ButtonLink, Badge } from "./ui";
+import {
+  formatMoney,
+  type PublicEventView,
+  type Terms,
+} from "@assembly/contracts";
+import { usePublicView } from "./public-session";
+import { PublicHeader, PublicFooter, Button, Badge } from "./ui";
 import { Poster } from "./poster";
 import { eventDate } from "@/lib/format";
-export function EventPage() {
-  return (
-    <WorkspaceProvider>
-      <PublicEvent />
-    </WorkspaceProvider>
+
+export function EventPage({ slug }: { slug: string }) {
+  const remote = usePublicView<PublicEventView>(
+    `/api/public/events/${encodeURIComponent(slug)}`,
   );
-}
-function PublicEvent() {
-  const { workspace: w, loading, error, refresh } = useWorkspace();
-  if (loading) return <PublicLoading />;
-  if (!w) return <PublicFailure error={error} retry={refresh} />;
-  const c = selectedConcept(w);
-  const published = !!w.event.publishedAt;
+  if (remote.loading) return <PublicLoading />;
+  if (!remote.view)
+    return <PublicFailure error={remote.error} retry={remote.refresh} />;
+  const w = remote.view,
+    c = w.concept;
+  const closed = ["COMPLETED", "CANCELLED", "LIVE"].includes(w.event.lifecycle);
   const bookingOpen =
     w.event.lifecycle === "BOOKING_OPEN" && !w.event.bookingPaused;
   const confirmed = [
@@ -43,6 +44,8 @@ function PublicEvent() {
     "LIVE",
     "COMPLETED",
   ].includes(w.event.lifecycle);
+  const title = w.terms.title.replace(/\.$/, ""),
+    comma = title.indexOf(",");
   return (
     <div className="public-site event-site">
       <header className="event-header">
@@ -50,65 +53,71 @@ function PublicEvent() {
           ASSEMBLY<span>.</span>
         </Link>
         <span>A NIGHT BY {w.venue.name.toUpperCase()}</span>
-        <Link href="/studio/events/blue-hour/demand">
-          Producer view <ArrowUpRight size={15} />
-        </Link>
+        <span>
+          {w.mode === "SAMPLE"
+            ? "A FICTIONAL REHEARSAL"
+            : "AN OPERATOR’S INVITATION"}
+        </span>
       </header>
       <main id="main">
         <div className="public-sample-strip">
           <span className="sample-ring" />
-          An interactive sample event · fictional venue & suppliers · no
-          payments or real reservations
+          {w.mode === "SAMPLE"
+            ? "Fictional event & suppliers · shared rehearsal · no real reservation or payment"
+            : "An operator-published production · free places · the host is responsible for availability and permissions"}
         </div>
         <section className="public-event-hero">
           <div className="public-event-copy">
             <div className="event-public-status">
               <Badge
                 tone={
-                  w.event.bookingPaused
+                  w.event.bookingPaused || w.event.lifecycle === "CANCELLED"
                     ? "warning"
                     : confirmed
                       ? "positive"
                       : "coral"
                 }
               >
-                {w.event.bookingPaused
-                  ? "A change is being reviewed"
-                  : confirmed
-                    ? "Confirmed sample production"
-                    : published
-                      ? "A proposed evening"
-                      : "A glimpse of a possible evening"}
+                {w.event.lifecycle === "CANCELLED"
+                  ? "This evening was cancelled"
+                  : w.event.lifecycle === "COMPLETED"
+                    ? "The evening is complete"
+                    : w.event.bookingPaused
+                      ? "A change is being reviewed"
+                      : bookingOpen
+                        ? "Booking is open"
+                        : confirmed
+                          ? "Production confirmed"
+                          : "A proposed evening"}
               </Badge>
-              <span>NO. 001</span>
+              <span>TERMS {w.terms.version.toString().padStart(2, "0")}</span>
             </div>
             <div className="eyebrow">
-              {c?.category || "LISTENING ROOM × LONG-TABLE SUPPER"}
+              {c?.category || "AN EVENING, MADE TOGETHER"}
             </div>
             <h1>
-              {(c?.title || "Blue hour, shared table.").split(",")[0]}
-              {c?.title.includes(",") || !c ? (
+              {comma >= 0 ? (
                 <>
-                  <span>,</span>
+                  {title.slice(0, comma + 1)}
                   <br />
-                  <em>shared table.</em>
+                  <em>{title.slice(comma + 1).trim()}.</em>
                 </>
-              ) : null}
+              ) : (
+                <>
+                  {title}
+                  <span>.</span>
+                </>
+              )}
             </h1>
-            <p className="public-event-deck">
-              {c?.subtitle || "Stay for one more record."}
-            </p>
-            <p className="public-event-description">
-              {c?.description ||
-                "Soulful grooves, generous plates, and the easy intimacy of a room that feels like someone’s home. Come for the music. Stay for the conversation."}
-            </p>
+            <p className="public-event-deck">{c?.subtitle}</p>
+            <p className="public-event-description">{c?.description}</p>
             <div className="public-event-facts">
               <div>
                 <CalendarDays size={17} />
                 <span>
                   <strong>{eventDate(w.terms.date, true)}</strong>
                   <small>
-                    {w.terms.doors}–{w.terms.end} · Europe/London
+                    {w.terms.doors}–{w.terms.end} · {w.venue.timezone}
                   </small>
                 </span>
               </div>
@@ -119,7 +128,7 @@ function PublicEvent() {
                     {w.venue.name}, {w.venue.neighborhood}
                   </strong>
                   <small>
-                    Fictional sample venue · {w.venue.capacity} seated places
+                    {w.venue.capacity} places in this production’s allotment
                   </small>
                 </span>
               </div>
@@ -127,50 +136,56 @@ function PublicEvent() {
                 <Utensils size={17} />
                 <span>
                   <strong>
-                    {formatMoney(w.terms.priceMinor)} per person, proposed
+                    {w.terms.priceMinor
+                      ? `${formatMoney(w.terms.priceMinor)} proposed per person`
+                      : "Free to come together"}
                   </strong>
-                  <small>Music, supper & a little time together</small>
+                  <small>
+                    {w.mode === "SAMPLE"
+                      ? "A sample price; no money is collected"
+                      : "No ticket fee or payment step"}
+                  </small>
                 </span>
               </div>
             </div>
-            {published && w.event.lifecycle !== "COMPLETED" ? (
+            {!closed && !w.event.bookingPaused ? (
               <>
                 <a href="#interest" className="button button-primary">
                   {bookingOpen
-                    ? "Join the sample evening"
+                    ? "A place in this evening"
                     : "I’d like to be there"}
                   <ArrowDown size={17} />
                 </a>
                 <div className="event-action-note">
                   {bookingOpen
-                    ? "Sample allocation only. No payment is taken."
+                    ? "Confirm your choice, then request your places."
                     : "Conditional interest only. This is not a ticket."}
                 </div>
               </>
             ) : (
-              <>
-                <ButtonLink
-                  href="/studio/events/blue-hour/brief"
-                  variant="primary"
-                >
-                  {w.event.lifecycle === "COMPLETED"
-                    ? "See how the night came together"
-                    : "Make this night happen"}
-                  <ArrowUpRight size={17} />
-                </ButtonLink>
-                <div className="event-action-note">
-                  {w.event.lifecycle === "COMPLETED"
-                    ? "The sample event is complete."
-                    : "This preview is not yet open for interest."}
-                </div>
-              </>
+              <div className="event-action-note">
+                {w.event.bookingPaused
+                  ? "The host is reviewing a change. Existing guests can use their private response link."
+                  : w.event.lifecycle === "CANCELLED"
+                    ? "All reservations have been released. There were no payments through ASSEMBLY."
+                    : "New responses are closed. Existing guests can still review their private choice."}
+              </div>
             )}
           </div>
           <div className="public-event-art">
-            <Poster variant={c?.art || "blue-hour"} />
+            <Poster
+              variant={c?.art}
+              title={w.terms.title}
+              venueName={w.venue.name}
+              date={w.terms.date}
+              doors={w.terms.doors}
+              location={w.venue.neighborhood}
+              capacity={w.venue.capacity}
+              category={c?.category}
+            />
             <div className="public-art-caption">
-              <span>AN ORIGINAL ASSEMBLY SAMPLE POSTER</span>
-              <span>01 / 03</span>
+              <span>ORIGINAL ASSEMBLY POSTER ART</span>
+              <span>MADE FOR THIS EVENING</span>
             </div>
           </div>
         </section>
@@ -184,32 +199,28 @@ function PublicEvent() {
             </h2>
           </div>
           <div className="public-story-grid">
-            {[
-              {
-                icon: AudioLines,
-                title: c?.ingredients[0] || "A sound to settle into.",
-                body:
-                  w.change?.status === "APPROVED"
-                    ? `${w.change.after} brings a warm acoustic set to the same intimate room.`
-                    : "A warm, intimate program. Close enough to catch the quiet details, soft enough to hear one another.",
-              },
-              {
-                icon: Utensils,
-                title: c?.ingredients[1] || "Pass the plates.",
-                body: "Generous seasonal food, shared at the table. A vegetarian-led menu with dietary needs confirmed before any real event.",
-              },
-              {
-                icon: Users,
-                title: c?.ingredients[2] || "Make a new connection.",
-                body: "A small room, a generous pace, and a little space for the unexpected. Come with someone, or come on your own.",
-              },
-            ].map((s) => (
-              <article key={s.title}>
-                <s.icon size={25} strokeWidth={1.25} />
-                <h3>{s.title}</h3>
-                <p>{s.body}</p>
-              </article>
-            ))}
+            {(
+              c?.ingredients || [
+                "A room with character",
+                "A considered program",
+                "Good company",
+              ]
+            ).map((ingredient, i) => {
+              const Icon = [AudioLines, Utensils, Users][i % 3];
+              return (
+                <article key={`${i}-${ingredient}`}>
+                  <Icon size={25} strokeWidth={1.25} />
+                  <h3>{ingredient}</h3>
+                  <p>
+                    {i === 0
+                      ? "The program below is the host’s current proposal. Any material change comes back to you for a new choice."
+                      : i === 1
+                        ? "Practical details and permissions are the host’s responsibility. Read the access notes before choosing."
+                        : "Come with someone or come on your own. Your response stays private, and you can withdraw it."}
+                  </p>
+                </article>
+              );
+            })}
           </div>
         </section>
         <section className="event-practical">
@@ -221,12 +232,15 @@ function PublicEvent() {
               <em>before you come.</em>
             </h2>
             <div className="public-run-of-show">
+              {w.programSchedulePending ? (
+                <p>
+                  The host still needs to review exact program times with the
+                  suppliers. Only the event’s opening and closing times are
+                  shown.
+                </p>
+              ) : null}
               {w.runOfShow
-                .filter((r) =>
-                  ["doors", "music", "supper", "records", "close"].includes(
-                    r.id,
-                  ),
-                )
+                .filter((r) => r.time >= w.terms.doors)
                 .map((r) => (
                   <div key={r.id}>
                     <span>{r.time}</span>
@@ -238,73 +252,34 @@ function PublicEvent() {
                 ))}
             </div>
           </div>
-          <div className="public-terms">
-            <div className="eyebrow">
-              <ShieldCheck size={15} />
-              YOUR CHOICE, ON CLEAR TERMS
-            </div>
-            <h3>The exact proposition.</h3>
-            <dl>
-              <div>
-                <dt>The date</dt>
-                <dd>{eventDate(w.terms.date)}</dd>
-              </div>
-              <div>
-                <dt>The time</dt>
-                <dd>
-                  {w.terms.doors}–{w.terms.end} · Europe/London
-                </dd>
-              </div>
-              <div>
-                <dt>The venue</dt>
-                <dd>{w.terms.address}</dd>
-              </div>
-              <div>
-                <dt>The price</dt>
-                <dd>
-                  {formatMoney(w.terms.priceMinor)} per person if a real pilot
-                  is approved. This sample never charges you.
-                </dd>
-              </div>
-              <div>
-                <dt>The program</dt>
-                <dd>{w.terms.program}</dd>
-              </div>
-              <div>
-                <dt>Access</dt>
-                <dd>{w.terms.access}</dd>
-              </div>
-            </dl>
-            <div className="public-terms-note">
-              <Info size={16} />
-              <p>
-                Any material change to the program, date, place, price, or
-                access conditions asks you to confirm again. You can withdraw
-                your sample choice at any time.
-              </p>
-            </div>
-            <span className="public-terms-version">
-              TERMS v{w.terms.version} · {w.terms.hash.slice(0, 12)}
-            </span>
-          </div>
+          <PublicTerms
+            terms={w.terms}
+            timezone={w.venue.timezone}
+            sample={w.mode === "SAMPLE"}
+          />
         </section>
-        {published && w.event.lifecycle !== "COMPLETED" ? (
-          <InterestForm />
+        {!closed ? (
+          <InterestForm
+            event={w}
+            busy={remote.busy}
+            error={remote.error}
+            submit={remote.act}
+          />
         ) : (
           <section className="preview-invitation">
             <span>✳</span>
             <h2>
-              Every good night starts
+              {w.event.lifecycle === "CANCELLED"
+                ? "Sometimes, the right call"
+                : "Every evening leaves"}
               <br />
-              <em>with someone saying, “what if?”</em>
+              <em>
+                {w.event.lifecycle === "CANCELLED"
+                  ? "is to pause."
+                  : "a little afterglow."}
+              </em>
             </h2>
-            <p>
-              Step into the production desk to choose a concept, review the
-              details, and publish this sample invitation.
-            </p>
-            <ButtonLink href="/studio">
-              Open the production desk <ArrowRight size={17} />
-            </ButtonLink>
+            <p>{w.terms.notice}</p>
           </section>
         )}
       </main>
@@ -312,14 +287,26 @@ function PublicEvent() {
     </div>
   );
 }
-function InterestForm() {
-  const { workspace: w, act, busy, error } = useWorkspace();
+
+function InterestForm({
+  event: w,
+  busy,
+  error,
+  submit,
+}: {
+  event: PublicEventView;
+  busy: string | null;
+  error: string | null;
+  submit: (input: {
+    type: string;
+    [key: string]: unknown;
+  }) => Promise<{ ok: boolean; token?: string }>;
+}) {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
   const [quantity, setQuantity] = useState(1);
-  const [consent, setConsent] = useState(false);
-  if (!w) return null;
+  const [acceptedHash, setAcceptedHash] = useState<string | null>(null);
+  const consent = acceptedHash === w.terms.hash;
   return (
     <section className="interest-section" id="interest">
       <div>
@@ -330,23 +317,27 @@ function InterestForm() {
           <em>A choice that’s yours.</em>
         </h2>
         <p>
-          Let the producer know you’d consider coming on these terms. Verify
-          your sample contact in the next step. If booking is open, you can then
-          allocate a sample place.
+          Tell the producer you would consider coming on these exact terms.
+          You’ll get a private response link to confirm, book when places open,
+          or change your mind.
         </p>
         <div className="interest-boundary">
           <ShieldCheck size={23} />
           <p>
-            No payment. No real reservation. No marketing consent.
+            No payment and no marketing consent.
             <br />A material change means we ask you again.
           </p>
         </div>
         <div className="interest-sample">
-          <Badge tone="warning">Isolated sample journey</Badge>
+          <Badge tone={w.mode === "SAMPLE" ? "warning" : "positive"}>
+            {w.mode === "SAMPLE"
+              ? "Shared sample journey"
+              : "Your response stays private"}
+          </Badge>
           <p>
-            Use a made-up email address. The verification link appears on
-            screen; nothing is emailed. Sample verification does not prove
-            ownership of a real contact.
+            {w.mode === "SAMPLE"
+              ? "You’re participating in a fictional rehearsal. Use a made-up name. Your actions are saved only as sample activity."
+              : "Use a first name or alias. No email is required. Save your private response link: anyone with it can manage your choice."}
           </p>
         </div>
       </div>
@@ -354,15 +345,24 @@ function InterestForm() {
         className="interest-form"
         onSubmit={async (e) => {
           e.preventDefault();
-          const result = await act("EXPRESS_INTEREST", {
-            name,
-            email,
-            quantity,
-            consent,
+          const result = await submit({
+            type: "EXPRESS_INTEREST",
+            expectedPublicVersion: w.version,
             termsVersion: w.terms.version,
+            termsHash: w.terms.hash,
+            payload: { name, quantity, consent },
           });
-          if (result.ok && result.token)
+          if (result.ok && result.token) {
+            try {
+              sessionStorage.setItem(
+                `assembly-choice:${w.event.slug}`,
+                result.token,
+              );
+            } catch {
+              /* The private link still works without browser storage. */
+            }
             router.push(`/commitments/${result.token}`);
+          }
         }}
       >
         <div className="interest-form-heading">
@@ -376,32 +376,20 @@ function InterestForm() {
           </div>
         ) : null}
         <label className="field">
-          <span>Your sample name</span>
+          <span>
+            {w.mode === "SAMPLE"
+              ? "Your sample name"
+              : "Your first name or alias"}
+          </span>
           <input
-            autoComplete="off"
+            autoComplete="given-name"
             name="name"
             required
             maxLength={100}
-            placeholder="Alex Taylor"
+            placeholder="Alex"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
-        </label>
-        <label className="field">
-          <span>Sample email address</span>
-          <input
-            autoComplete="off"
-            name="email"
-            type="email"
-            required
-            maxLength={254}
-            placeholder="alex@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <p className="field-hint">
-            Only a masked address and a deduplication digest are saved.
-          </p>
         </label>
         <label className="field">
           <span>People in your party</span>
@@ -422,11 +410,14 @@ function InterestForm() {
             type="checkbox"
             required
             checked={consent}
-            onChange={(e) => setConsent(e.target.checked)}
+            onChange={(e) =>
+              setAcceptedHash(e.target.checked ? w.terms.hash : null)
+            }
           />
           <span>
-            I’ve read terms v{w.terms.version}. I understand this is a sample
-            conditional choice, not a ticket or payment, and I can withdraw it.
+            I’ve read terms v{w.terms.version}. This is conditional interest,
+            not an allocated place. I can withdraw using my private response
+            link.{w.mode === "SAMPLE" ? " This is a fictional rehearsal." : ""}
           </span>
         </label>
         <Button
@@ -434,22 +425,121 @@ function InterestForm() {
           busy={busy === "EXPRESS_INTEREST"}
           disabled={!consent || w.event.bookingPaused}
         >
-          Save my sample interest <ArrowRight size={16} />
+          Save my {w.mode === "SAMPLE" ? "sample " : ""}interest
+          <ArrowRight size={16} />
         </Button>
         {w.event.bookingPaused ? (
           <p className="paused-note">
-            A program change is under review. New choices are paused until the
-            terms are settled.
+            A change is under review. New choices are paused until the terms are
+            settled.
           </p>
         ) : null}
         <div className="interest-form-footer">
           <Check size={12} />
-          Your choice belongs to this browser’s isolated workspace.
+          {w.consentNotice}
         </div>
       </form>
     </section>
   );
 }
+
+export function PublicTerms({
+  terms,
+  timezone,
+  sample,
+}: {
+  terms: Terms;
+  timezone: string;
+  sample: boolean;
+}) {
+  return (
+    <div className="public-terms">
+      <div className="eyebrow">
+        <ShieldCheck size={15} />
+        YOUR CHOICE, ON CLEAR TERMS
+      </div>
+      <h3>The exact proposition.</h3>
+      <dl>
+        <div>
+          <dt>The date</dt>
+          <dd>{eventDate(terms.date)}</dd>
+        </div>
+        <div>
+          <dt>The time</dt>
+          <dd>
+            {terms.doors}–{terms.end} · {timezone}
+          </dd>
+        </div>
+        <div>
+          <dt>The venue</dt>
+          <dd>
+            {terms.venue} · {terms.address}
+          </dd>
+        </div>
+        <div>
+          <dt>The price</dt>
+          <dd>
+            {terms.priceMinor
+              ? `${formatMoney(terms.priceMinor)} proposed per person`
+              : "Free admission"}
+            {sample
+              ? " · sample allocation only, no payment"
+              : " · no payment through ASSEMBLY"}
+          </dd>
+        </div>
+        {terms.capacity !== undefined ? (
+          <div>
+            <dt>The room</dt>
+            <dd>
+              {terms.capacity} seated places
+              {terms.soundLimitDb !== undefined
+                ? ` · sound limit ${terms.soundLimitDb} dB`
+                : ""}
+              {terms.curfew ? ` · curfew ${terms.curfew}` : ""}
+            </dd>
+          </div>
+        ) : null}
+        <div>
+          <dt>The program</dt>
+          <dd>{terms.program}</dd>
+        </div>
+        {terms.programSchedule?.length ? (
+          <div>
+            <dt>Program times</dt>
+            <dd>
+              <ul className="terms-program-slots">
+                {terms.programSchedule.map((slot) => (
+                  <li key={slot.supplierId}>
+                    <strong>
+                      {slot.start}–{slot.end}
+                    </strong>{" "}
+                    · {slot.name}
+                    {slot.canOverlap ? " · concurrent service" : ""}
+                  </li>
+                ))}
+              </ul>
+            </dd>
+          </div>
+        ) : null}
+        <div>
+          <dt>Access</dt>
+          <dd>{terms.access}</dd>
+        </div>
+      </dl>
+      <div className="public-terms-note">
+        <Info size={16} />
+        <p>
+          {terms.notice} Material changes to the date, place, price, program or
+          access require your renewed choice.
+        </p>
+      </div>
+      <span className="public-terms-version">
+        TERMS v{terms.version} · {terms.hash.slice(0, 12)}
+      </span>
+    </div>
+  );
+}
+
 export function PublicLoading() {
   return (
     <div className="public-site">
@@ -477,17 +567,22 @@ export function PublicFailure({
     <div className="public-site">
       <PublicHeader />
       <main id="main" className="not-found">
-        <div className="eyebrow">A MOMENTARY PAUSE</div>
+        <div className="eyebrow">THIS INVITATION NEEDS A MOMENT</div>
         <h1>
-          Let’s try
+          A little pause.
           <br />
-          <em>that again.</em>
+          <em>The night can wait.</em>
         </h1>
-        <p>{error || "The saved sample workspace could not be opened."}</p>
+        <p>
+          {error ||
+            "This link may have expired, or the host has not published the invitation yet."}
+        </p>
         <Button onClick={() => void retry()}>
-          Reload the evening <ArrowRight size={16} />
+          Try this link again
+          <ArrowRight size={16} />
         </Button>
       </main>
+      <PublicFooter />
     </div>
   );
 }

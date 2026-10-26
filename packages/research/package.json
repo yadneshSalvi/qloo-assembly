@@ -1,0 +1,1 @@
+{"name":"@assembly/research","version":"0.1.0","private":true,"type":"module","exports":"./src/index.ts","dependencies":{"@assembly/contracts":"workspace:*","@assembly/qloo":"workspace:*","@ai-sdk/openai":"4.0.103","ai":"7.0.152","zod":"4.6.7"}}

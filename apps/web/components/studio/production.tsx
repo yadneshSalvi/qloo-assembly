@@ -1,5 +1,4 @@
 "use client";
-import Link from "next/link";
 import { useState } from "react";
 import {
   ArrowRight,
@@ -17,6 +16,7 @@ import {
   Users,
 } from "lucide-react";
 import {
+  assessOfferSchedule,
   costWorksheet,
   countsFor,
   formatMoney,
@@ -27,11 +27,11 @@ import {
 import { useWorkspace } from "../workspace-context";
 import { Badge, Button, ButtonLink, EmptyState } from "../ui";
 import { ApprovalDialog } from "../approval-dialog";
+import { SupplierTools } from "./suppliers";
 import { eventDate } from "@/lib/format";
 export function ProductionView() {
   const { workspace: w, act, busy } = useWorkspace();
   const [approve, setApprove] = useState(false);
-  const [disruptConfirm, setDisruptConfirm] = useState(false);
   if (!w) return null;
   const c = selectedConcept(w),
     cost = costWorksheet(w),
@@ -42,7 +42,7 @@ export function ProductionView() {
         icon={<ClipboardCheck size={24} />}
         title="First, find the evening’s character."
         action={
-          <ButtonLink href="/studio/events/blue-hour/concepts">
+          <ButtonLink href="/studio/events/current/concepts">
             Explore the concepts <ArrowRight size={16} />
           </ButtonLink>
         }
@@ -52,6 +52,21 @@ export function ProductionView() {
       </EmptyState>
     );
   const suppliers = w.suppliers.filter((s) => c.supplierIds.includes(s.id));
+  const explicitSchedule = w.mode === "REAL" || c.origin === "MODEL_HYPOTHESIS";
+  const schedule = explicitSchedule
+    ? assessOfferSchedule(suppliers, w.terms.doors, w.terms.end)
+    : null;
+  const scheduleIssues = schedule
+    ? [
+        ...schedule.violations,
+        ...schedule.unresolvedProgram,
+        ...schedule.unresolvedSetup,
+      ]
+    : [];
+  const schedulePending = explicitSchedule && !w.terms.programSchedule?.length;
+  const visibleSchedule = schedulePending
+    ? w.runOfShow.filter((item) => ["doors", "close"].includes(item.id))
+    : w.runOfShow;
   const gates =
     suppliers.filter((s) => s.status === "CONFIRMED").length +
     w.requirements.filter((r) => r.confirmed).length;
@@ -59,7 +74,9 @@ export function ProductionView() {
   const cleared =
     gates === gateTotal &&
     cost.headroom >= 0 &&
-    w.venue.availability === "AVAILABLE";
+    w.venue.availability === "AVAILABLE" &&
+    scheduleIssues.length === 0 &&
+    !schedulePending;
   const confirmed = [
     "CONFIRMED",
     "BOOKING_OPEN",
@@ -93,7 +110,11 @@ export function ProductionView() {
                   : "Bringing it together"}
             </strong>
             <small>
-              {gateTotal - gates} unresolved production requirements
+              {gateTotal -
+                gates +
+                scheduleIssues.length +
+                (schedulePending ? 1 : 0)}{" "}
+              unresolved production requirements
             </small>
           </div>
         </div>
@@ -108,7 +129,7 @@ export function ProductionView() {
               replacement and revised terms are reviewed.
             </p>
           </div>
-          <ButtonLink href="/studio/events/blue-hour/changes/current">
+          <ButtonLink href="/studio/events/current/changes/current">
             Review the change <ArrowRight size={15} />
           </ButtonLink>
         </div>
@@ -119,7 +140,7 @@ export function ProductionView() {
             <div className="panel-heading">
               <div>
                 <h3>The people behind the night</h3>
-                <p>Sample offers. Explicit availability and scope.</p>
+                <p>Recorded offers. Explicit availability, source and scope.</p>
               </div>
               <Badge>
                 {suppliers.filter((s) => s.status === "CONFIRMED").length}/
@@ -137,9 +158,7 @@ export function ProductionView() {
                   <span>{s.discipline}</span>
                   <strong>{s.name}</strong>
                   <p>{s.scope}</p>
-                  <Link href={`/collaborate/${s.token}`} className="text-link">
-                    View scoped assignment <ArrowUpRight size={12} />
-                  </Link>
+                  <SupplierTools supplier={s} />
                 </div>
                 <div className="supplier-actions">
                   <strong>{formatMoney(s.feeMinor)}</strong>
@@ -154,17 +173,6 @@ export function ProductionView() {
                   >
                     {s.status.toLowerCase()}
                   </Badge>
-                  {s.status === "QUOTED" ? (
-                    <Button
-                      variant="secondary"
-                      busy={busy === "CONFIRM_SUPPLIER"}
-                      onClick={() =>
-                        void act("CONFIRM_SUPPLIER", { supplierId: s.id })
-                      }
-                    >
-                      Confirm sample offer
-                    </Button>
-                  ) : null}
                 </div>
               </div>
             ))}
@@ -189,10 +197,41 @@ export function ProductionView() {
                 </div>
                 <h3>The rhythm of the evening</h3>
               </div>
-              <Badge dot={false}>Europe/London</Badge>
+              <Badge dot={false}>{w.venue.timezone}</Badge>
             </div>
+            {scheduleIssues.length || schedulePending ? (
+              <div className="schedule-review" role="status">
+                <strong>Exact timing needs review.</strong>
+                <ul>
+                  {scheduleIssues.map((issue) => (
+                    <li key={issue}>{issue}</li>
+                  ))}
+                  {schedulePending ? (
+                    <li>
+                      Program times have not been captured in the exact event
+                      terms.
+                    </li>
+                  ) : null}
+                </ul>
+                <p>
+                  {w.event.publishedAt
+                    ? "Use a reviewed replacement offer for any changed slot. Guests must approve the updated program."
+                    : "Enter the times on each supplier offer, then choose a current proposal."}
+                </p>
+                <ButtonLink
+                  href={
+                    w.event.publishedAt
+                      ? "/studio/events/current/changes/current"
+                      : "/studio/suppliers"
+                  }
+                  variant="secondary"
+                >
+                  Review timing <ArrowRight size={15} />
+                </ButtonLink>
+              </div>
+            ) : null}
             <div className="timeline">
-              {w.runOfShow.map((item, i) => (
+              {visibleSchedule.map((item, i) => (
                 <div className="timeline-row" key={item.id}>
                   <span className="timeline-time">{item.time}</span>
                   <span
@@ -233,7 +272,8 @@ export function ProductionView() {
                 <div>
                   <h3>The guest list</h3>
                   <p>
-                    {counts.bookings} allocated sample places ·{" "}
+                    {counts.bookings} allocated{" "}
+                    {w.mode === "SAMPLE" ? "sample " : ""}places ·{" "}
                     {counts.checkins} arrivals
                   </p>
                 </div>
@@ -278,8 +318,8 @@ export function ProductionView() {
                 </div>
               ) : (
                 <div className="inline-empty">
-                  No sample bookings yet. Verified audience choices can book
-                  once you open booking.
+                  No bookings yet. Confirmed audience choices can book once you
+                  open booking.
                 </div>
               )}
             </div>
@@ -293,7 +333,8 @@ export function ProductionView() {
               <span>Full-room production cost</span>
               <strong>{formatMoney(cost.total)}</strong>
               <small>
-                At {w.venue.capacity} guests · fictional GBP estimates
+                At {w.venue.capacity} guests ·{" "}
+                {w.mode === "SAMPLE" ? "sample" : "entered"} GBP costs
               </small>
             </div>
             <dl>
@@ -306,7 +347,11 @@ export function ProductionView() {
                 <dd>{formatMoney(cost.variable)}</dd>
               </div>
               <div>
-                <dt>Ticket price</dt>
+                <dt>
+                  {w.terms.priceMinor === 0
+                    ? "Guest price · free"
+                    : "Scenario ticket price"}
+                </dt>
                 <dd>{formatMoney(w.terms.priceMinor)}</dd>
               </div>
               <div>
@@ -320,12 +365,20 @@ export function ProductionView() {
             </dl>
             <div className="break-even">
               <span className="break-even-number">
-                {cost.breakEven ?? "—"}
-                <small>/{w.venue.capacity}</small>
+                {w.terms.priceMinor === 0 ? "£0" : (cost.breakEven ?? "—")}
+                {w.terms.priceMinor ? <small>/{w.venue.capacity}</small> : null}
               </span>
               <div>
-                <strong>places to break even</strong>
-                <small>Based on entered costs, not predicted demand.</small>
+                <strong>
+                  {w.terms.priceMinor === 0
+                    ? "Host-funded production"
+                    : "places to break even"}
+                </strong>
+                <small>
+                  {w.terms.priceMinor === 0
+                    ? "Costs must fit the funded budget above."
+                    : "Based on entered costs, not predicted demand."}
+                </small>
               </div>
             </div>
           </div>
@@ -349,7 +402,7 @@ export function ProductionView() {
               {!confirmed
                 ? "Confirm the people and responsibilities, then approve the exact production terms. Audience interest informs your choice. It never makes the decision for you."
                 : w.event.lifecycle === "CONFIRMED"
-                  ? "Your approval is saved. Open sample bookings when you are ready to allocate places."
+                  ? "Your approval is saved. Open bookings when you are ready to allocate places."
                   : w.event.lifecycle === "BOOKING_OPEN"
                     ? "Complete the operational checks before welcoming guests. Every allocated place is capacity-checked."
                     : "Keep a clear record of what actually happened."}
@@ -359,7 +412,7 @@ export function ProductionView() {
                 Review greenlight <ArrowRight size={16} />
               </Button>
             ) : w.event.lifecycle === "CONCEPT_READY" ? (
-              <ButtonLink href="/studio/events/blue-hour/demand">
+              <ButtonLink href="/studio/events/current/demand">
                 Publish the proposal first <ArrowRight size={15} />
               </ButtonLink>
             ) : w.event.lifecycle === "CONFIRMED" ? (
@@ -367,7 +420,8 @@ export function ProductionView() {
                 busy={busy === "OPEN_BOOKING"}
                 onClick={() => void act("OPEN_BOOKING")}
               >
-                Open sample bookings <ArrowRight size={16} />
+                Open {w.mode === "SAMPLE" ? "sample " : "free "}bookings{" "}
+                <ArrowRight size={16} />
               </Button>
             ) : w.event.lifecycle === "BOOKING_OPEN" ? (
               <Button
@@ -385,14 +439,9 @@ export function ProductionView() {
                 Open the doors <DoorOpen size={16} />
               </Button>
             ) : w.event.lifecycle === "LIVE" ? (
-              <Button
-                busy={busy === "COMPLETE_EVENT"}
-                onClick={() => void act("COMPLETE_EVENT")}
-              >
-                Complete the sample event <CheckCircle2 size={16} />
-              </Button>
+              <CompletionControl />
             ) : (
-              <ButtonLink href="/studio/events/blue-hour/results">
+              <ButtonLink href="/studio/events/current/results">
                 See the outcome <ArrowRight size={16} />
               </ButtonLink>
             )}
@@ -407,48 +456,7 @@ export function ProductionView() {
               {w.approvals.length === 1 ? "approval" : "approvals"} recorded
             </div>
           </div>
-          {confirmed &&
-          !w.change &&
-          c.id === "blue-hour" &&
-          w.event.lifecycle !== "COMPLETED" &&
-          w.event.lifecycle !== "LIVE" ? (
-            <div className="rehearsal-panel">
-              <div className="eyebrow">WHEN PLANS CHANGE</div>
-              <h3>A resilient production has a second act.</h3>
-              <p>
-                Rehearse a music supplier cancellation in this isolated sample.
-                See what pauses, what stays, and whose consent is needed again.
-              </p>
-              {disruptConfirm ? (
-                <div className="rehearsal-confirm">
-                  <strong>Withdraw the sample music supplier?</strong>
-                  <p>Bookings will pause while you review a replacement.</p>
-                  <div>
-                    <Button
-                      variant="secondary"
-                      onClick={() => setDisruptConfirm(false)}
-                    >
-                      Keep supplier
-                    </Button>
-                    <Button
-                      variant="danger"
-                      busy={busy === "DISRUPT"}
-                      onClick={async () => {
-                        await act("DISRUPT", { supplierId: "low-lights" });
-                        setDisruptConfirm(false);
-                      }}
-                    >
-                      Rehearse cancellation
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <Button variant="ghost" onClick={() => setDisruptConfirm(true)}>
-                  Rehearse a disruption <ArrowUpRight size={14} />
-                </Button>
-              )}
-            </div>
-          ) : null}
+          <ProductionChanges />
         </aside>
       </div>
       <ApprovalDialog
@@ -456,7 +464,7 @@ export function ProductionView() {
         onOpenChange={setApprove}
         action="GREENLIGHT"
         title="Let’s make this night happen."
-        description="This is your operational approval of the sample production. It does not send messages, enter contracts, or authorize payment."
+        description="Approve the exact production terms and the recorded operational checks. No external messages or payments are sent by this action."
         buttonLabel="Greenlight this version"
         blocked={!cleared}
       >
@@ -470,6 +478,99 @@ export function ProductionView() {
         </div>
       </ApprovalDialog>
     </>
+  );
+}
+function CompletionControl() {
+  const { workspace: w, act, busy } = useWorkspace();
+  const [evidence, setEvidence] = useState("");
+  if (!w) return null;
+  return (
+    <form
+      className="completion-control"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void act("COMPLETE_EVENT", w.mode === "REAL" ? { evidence } : {});
+      }}
+    >
+      {w.mode === "REAL" ? (
+        <label className="field">
+          <span>What actually happened?</span>
+          <textarea
+            value={evidence}
+            required
+            minLength={5}
+            maxLength={2000}
+            rows={3}
+            onChange={(e) => setEvidence(e.target.value)}
+            placeholder="Record completion, who observed it, and any unresolved issues."
+          />
+        </label>
+      ) : (
+        <p className="field-hint">
+          Completing records the end of this fictional rehearsal. It is not
+          evidence of a physical event.
+        </p>
+      )}
+      <Button type="submit" busy={busy === "COMPLETE_EVENT"}>
+        Complete the {w.mode === "SAMPLE" ? "rehearsal" : "production"}
+        <CheckCircle2 size={16} />
+      </Button>
+    </form>
+  );
+}
+function ProductionChanges() {
+  const { workspace: w } = useWorkspace();
+  const [cancel, setCancel] = useState(false);
+  const [reason, setReason] = useState("");
+  if (
+    !w ||
+    !w.event.publishedAt ||
+    ["COMPLETED", "CANCELLED"].includes(w.event.lifecycle)
+  )
+    return null;
+  return (
+    <div className="rehearsal-panel">
+      <div className="eyebrow">WHEN PLANS CHANGE</div>
+      <h3>A resilient production has a second act.</h3>
+      <p>
+        Review any supplier loss, date, place, program or access change.
+        Existing allocations stay protected while people decide again.
+      </p>
+      {w.event.lifecycle !== "LIVE" ? (
+        <ButtonLink
+          href="/studio/events/current/changes/current"
+          variant="secondary"
+        >
+          Review a change of plan
+          <ArrowUpRight size={14} />
+        </ButtonLink>
+      ) : null}
+      <Button variant="ghost" onClick={() => setCancel(true)}>
+        Cancel this production
+      </Button>
+      <ApprovalDialog
+        open={cancel}
+        onOpenChange={setCancel}
+        action="CANCEL_EVENT"
+        title="Close this evening’s doors."
+        description="Cancelling releases every app-managed place and marks the public invitation and private response links as cancelled. No message or refund is sent; ASSEMBLY has not collected payment."
+        buttonLabel="Cancel this production"
+        payload={{ reason }}
+        blocked={reason.trim().length < 5}
+      >
+        <label className="field">
+          <span>Reason for cancellation</span>
+          <textarea
+            rows={3}
+            required
+            minLength={5}
+            maxLength={1500}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+        </label>
+      </ApprovalDialog>
+    </div>
   );
 }
 function RequirementRow({ requirement: r }: { requirement: Requirement }) {
@@ -514,11 +615,11 @@ function RequirementRow({ requirement: r }: { requirement: Requirement }) {
               rows={2}
               value={proof}
               onChange={(e) => setProof(e.target.value)}
-              placeholder="Record the sample owner's responsibility and what was reviewed."
+              placeholder="Record the responsible person and what was reviewed."
             />
           </label>
           <Button type="submit" busy={busy === "CONFIRM_REQUIREMENT"}>
-            Save sample confirmation <Check size={14} />
+            Save responsibility check <Check size={14} />
           </Button>
         </form>
       ) : null}

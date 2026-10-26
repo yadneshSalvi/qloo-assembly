@@ -9,6 +9,7 @@ import { ProductionView } from "./studio/production";
 import { ChangesView } from "./studio/changes";
 import { ResultsView } from "./studio/results";
 import { VenueView } from "./studio/venue";
+import { SuppliersView } from "./studio/suppliers";
 export function StudioApp({ tab }: { tab: string }) {
   return (
     <WorkspaceProvider>
@@ -17,6 +18,8 @@ export function StudioApp({ tab }: { tab: string }) {
           <Overview />
         ) : tab === "venue" ? (
           <VenueView />
+        ) : tab === "suppliers" ? (
+          <SuppliersView />
         ) : tab === "brief" ? (
           <BriefView />
         ) : tab === "concepts" ? (

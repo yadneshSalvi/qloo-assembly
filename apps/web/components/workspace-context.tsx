@@ -21,6 +21,9 @@ interface Context {
     payload?: Record<string, unknown>,
   ) => Promise<{ ok: boolean; token?: string }>;
   reset: () => Promise<boolean>;
+  openWorkspace: (
+    input: { mode: "SAMPLE" | "REAL" } | { workspaceId: string },
+  ) => Promise<boolean>;
   clearError: () => void;
 }
 const WorkspaceContext = createContext<Context | null>(null);
@@ -70,6 +73,13 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     }
   }, [accept]);
   useEffect(() => {
+    const onFocus = () => {
+      if (!busy) void refresh();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [busy, refresh]);
+  useEffect(() => {
     let active = true;
     bootstrapWorkspace()
       .then((data) => {
@@ -89,12 +99,19 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     if (
       busy ||
       (workspace?.run?.status !== "QUEUED" &&
-        workspace?.run?.status !== "RUNNING")
+        workspace?.run?.status !== "RUNNING" &&
+        workspace?.research?.search?.status !== "QUEUED" &&
+        workspace?.research?.search?.status !== "RUNNING")
     )
       return;
     const timer = setInterval(() => void refresh(), 1000);
     return () => clearInterval(timer);
-  }, [workspace?.run?.status, busy, refresh]);
+  }, [
+    workspace?.run?.status,
+    workspace?.research?.search?.status,
+    busy,
+    refresh,
+  ]);
   useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(() => setNotice(null), 6000);
@@ -113,6 +130,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             type,
+            workspaceId: current.id,
             payload,
             expectedVersion: current.version,
             idempotencyKey: crypto.randomUUID(),
@@ -150,6 +168,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          workspaceId: stateRef.current?.id,
           expectedVersion: stateRef.current?.version,
           idempotencyKey: crypto.randomUUID(),
         }),
@@ -170,6 +189,35 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       setBusy(null);
     }
   }, []);
+  const openWorkspace = useCallback(
+    async (input: { mode: "SAMPLE" | "REAL" } | { workspaceId: string }) => {
+      setBusy("WORKSPACE");
+      setError(null);
+      try {
+        const response = await fetch("/api/workspace", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+        });
+        const data = await response.json();
+        if (!response.ok)
+          throw new Error(
+            data.error?.message || "This production could not be opened.",
+          );
+        const next = (data.workspace ?? data) as Workspace;
+        stateRef.current = next;
+        setWorkspace(next);
+        setNotice("Your production desk is ready.");
+        return true;
+      } catch (cause) {
+        setError(messageFor(cause));
+        return false;
+      } finally {
+        setBusy(null);
+      }
+    },
+    [],
+  );
   return (
     <WorkspaceContext.Provider
       value={{
@@ -181,6 +229,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         refresh,
         act,
         reset,
+        openWorkspace,
         clearError: () => setError(null),
       }}
     >

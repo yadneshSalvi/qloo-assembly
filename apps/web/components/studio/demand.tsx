@@ -1,5 +1,4 @@
 "use client";
-import Link from "next/link";
 import { useState } from "react";
 import {
   ArrowRight,
@@ -12,7 +11,12 @@ import {
   ShieldCheck,
   Users,
 } from "lucide-react";
-import { countsFor, formatMoney, selectedConcept } from "@assembly/contracts";
+import {
+  assessOfferSchedule,
+  countsFor,
+  formatMoney,
+  selectedConcept,
+} from "@assembly/contracts";
 import { useWorkspace } from "../workspace-context";
 import { Badge, Button, ButtonLink, EmptyState } from "../ui";
 import { ApprovalDialog } from "../approval-dialog";
@@ -31,7 +35,7 @@ export function DemandView() {
         icon={<Users size={25} />}
         title="Give people something to choose."
         action={
-          <ButtonLink href="/studio/events/blue-hour/concepts">
+          <ButtonLink href="/studio/events/current/concepts">
             Choose a concept <ArrowRight size={15} />
           </ButtonLink>
         }
@@ -41,6 +45,17 @@ export function DemandView() {
       </EmptyState>
     );
   const published = !!w.event.publishedAt;
+  const schedule =
+    w.mode === "REAL" || c.origin === "MODEL_HYPOTHESIS"
+      ? assessOfferSchedule(
+          w.suppliers.filter((s) => c.supplierIds.includes(s.id)),
+          w.terms.doors,
+          w.terms.end,
+        )
+      : null;
+  const scheduleIssues = schedule
+    ? [...schedule.violations, ...schedule.unresolvedProgram]
+    : [];
   return (
     <>
       <div className="section-intro">
@@ -55,23 +70,33 @@ export function DemandView() {
         <Metric
           number={counts.interested}
           label="Expressed interest"
-          detail="Sample people · all active terms"
+          detail={
+            w.mode === "SAMPLE"
+              ? "Rehearsal responses · active terms"
+              : "Response quantities · active terms"
+          }
         />
         <Metric
           number={counts.verified}
-          label="Verified, current choices"
-          detail={`Contact verified · terms v${w.terms.version}`}
+          label="Confirmed, current choices"
+          detail={`Private-link consent · terms v${w.terms.version}`}
           accent
         />
         <Metric
           number={counts.bookings}
-          label="Confirmed sample bookings"
+          label={
+            w.mode === "SAMPLE" ? "Confirmed sample places" : "Confirmed places"
+          }
           detail="Allocated places · no payment"
         />
         <Metric
           number={counts.checkins}
           label="Checked in"
-          detail="Observed sample attendance"
+          detail={
+            w.mode === "SAMPLE"
+              ? "Recorded rehearsal arrivals"
+              : "Operator-recorded arrivals"
+          }
         />
       </div>
       <div className="demand-layout">
@@ -89,7 +114,17 @@ export function DemandView() {
           </div>
           <div className="proposal-preview">
             <div className="proposal-preview-art">
-              <Poster variant={c.art} compact />
+              <Poster
+                variant={c.art}
+                compact
+                title={w.terms.title}
+                venueName={w.venue.name}
+                date={w.terms.date}
+                doors={w.terms.doors}
+                location={w.venue.neighborhood}
+                capacity={w.venue.capacity}
+                category={c.category}
+              />
             </div>
             <div>
               <div className="eyebrow">
@@ -133,19 +168,32 @@ export function DemandView() {
             </span>
             {!published ? (
               <Button onClick={() => setApprove(true)}>
-                Review & publish sample <ArrowRight size={16} />
+                Review & publish proposal <ArrowRight size={16} />
               </Button>
             ) : (
-              <ButtonLink href="/events/blue-hour" variant="secondary">
+              <ButtonLink href={`/events/${w.event.slug}`} variant="secondary">
                 Open attendee experience <ArrowUpRight size={16} />
               </ButtonLink>
             )}
           </div>
+          {!published && scheduleIssues.length ? (
+            <div className="schedule-review" role="status">
+              <strong>Confirm the program times before publishing.</strong>
+              <ul>
+                {scheduleIssues.map((issue) => (
+                  <li key={issue}>{issue}</li>
+                ))}
+              </ul>
+              <ButtonLink href="/studio/suppliers" variant="secondary">
+                Review offer times <ArrowRight size={15} />
+              </ButtonLink>
+            </div>
+          ) : null}
           <div className="audience-list">
             <div className="panel-heading">
               <div>
                 <h3>The responses</h3>
-                <p>Only verified choices on the current terms count.</p>
+                <p>Only confirmed choices on the current terms count.</p>
               </div>
               <span className="small-count">{w.commitments.length}</span>
             </div>
@@ -159,8 +207,7 @@ export function DemandView() {
                     <div>
                       <strong>{r.displayName}</strong>
                       <small>
-                        {r.emailMasked} · {r.quantity}{" "}
-                        {r.quantity === 1 ? "place" : "places"}
+                        {r.quantity} {r.quantity === 1 ? "place" : "places"}
                       </small>
                     </div>
                     <Badge
@@ -172,15 +219,10 @@ export function DemandView() {
                             : "warning"
                       }
                     >
-                      {r.status.toLowerCase().replaceAll("_", " ")}
+                      {r.status === "VERIFIED"
+                        ? "confirmed choice"
+                        : r.status.toLowerCase().replaceAll("_", " ")}
                     </Badge>
-                    <Link
-                      href={`/commitments/${r.token}`}
-                      className="icon-button"
-                      aria-label={`Review ${r.displayName}'s sample choice`}
-                    >
-                      <ArrowUpRight size={16} />
-                    </Link>
                   </div>
                 ))}
               </div>
@@ -190,14 +232,17 @@ export function DemandView() {
                 title="The first conversation is still ahead."
                 action={
                   published ? (
-                    <ButtonLink href="/events/blue-hour" variant="secondary">
-                      Try the sample attendee journey <ArrowUpRight size={15} />
+                    <ButtonLink
+                      href={`/events/${w.event.slug}`}
+                      variant="secondary"
+                    >
+                      Open the attendee invitation <ArrowUpRight size={15} />
                     </ButtonLink>
                   ) : undefined
                 }
               >
                 No one has expressed interest yet. Publish the proposal, then
-                use the attendee page to make a sample choice.
+                share its link and let each guest make their own choice.
               </EmptyState>
             )}
           </div>
@@ -213,19 +258,25 @@ export function DemandView() {
               <em>A clear commitment.</em>
             </h3>
             <p>
-              Preview the public page, make a sample choice, and see the counts
-              update here.
+              Share the published invitation. Guests use their own browser and
+              receive a private response link.
             </p>
-            <ButtonLink href="/events/blue-hour" variant="secondary">
-              Preview the event <ExternalLink size={14} />
-            </ButtonLink>
+            {published ? (
+              <ButtonLink href={`/events/${w.event.slug}`} variant="secondary">
+                Open the published event <ExternalLink size={14} />
+              </ButtonLink>
+            ) : (
+              <p className="field-hint">
+                Review and approve the proposal to create its public invitation.
+              </p>
+            )}
             {published ? (
               <Button
                 variant="ghost"
                 onClick={async () => {
                   try {
                     await navigator.clipboard.writeText(
-                      `${window.location.origin}/events/blue-hour`,
+                      `${window.location.origin}/events/${w.event.slug}`,
                     );
                     setCopied(true);
                   } catch {
@@ -234,12 +285,12 @@ export function DemandView() {
                 }}
               >
                 {copied ? <CheckCircle2 size={14} /> : <Copy size={14} />}{" "}
-                {copied ? "Link copied" : "Copy preview link"}
+                {copied ? "Link copied" : "Copy invitation link"}
               </Button>
             ) : null}
             <small>
-              The link opens a sample for each browser. Your workspace’s guest
-              list is private to this session.
+              This link opens this production in any browser. Guests cannot see
+              your desk or anyone else’s response. No message is sent.
             </small>
           </div>
           <div className="count-definition">
@@ -247,14 +298,15 @@ export function DemandView() {
             <div>
               <h4>Every number means one thing.</h4>
               <p>
-                <strong>Interest</strong> is an active sample response.
+                <strong>Interest</strong> is an active response quantity.
               </p>
               <p>
-                <strong>Verified</strong> means the sample confirmation step was
-                completed on current terms.
+                <strong>Confirmed</strong> means the holder of a private link
+                accepted the current terms. It does not verify identity.
               </p>
               <p>
-                <strong>Booking</strong> allocates a sample place.
+                <strong>Booking</strong> allocates places from this production’s
+                capacity.
               </p>
               <p>
                 <strong>Check-in</strong> records attendance separately.
@@ -266,7 +318,7 @@ export function DemandView() {
               <div className="eyebrow">WHILE THE WORD SPREADS</div>
               <h3>Bring the people behind the night together.</h3>
               <ButtonLink
-                href="/studio/events/blue-hour/production"
+                href="/studio/events/current/production"
                 variant="ghost"
               >
                 Open production <ArrowRight size={16} />
@@ -276,12 +328,13 @@ export function DemandView() {
         </aside>
       </div>
       <ApprovalDialog
+        blocked={scheduleIssues.length > 0}
         open={approve}
         onOpenChange={setApprove}
         action="PUBLISH"
         title="Let people in on the idea."
-        description="Approve the exact conditional proposal before opening sample interest collection."
-        buttonLabel="Approve & publish sample"
+        description="Approve the exact conditional proposal before opening interest collection. Share the link yourself when you are ready."
+        buttonLabel="Approve & publish proposal"
       />
     </>
   );

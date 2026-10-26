@@ -4,71 +4,58 @@ import { useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
-  ArrowUpRight,
   Check,
   CheckCircle2,
+  Copy,
   Fingerprint,
   Info,
-  MailCheck,
+  Link2,
+  RefreshCw,
   ShieldCheck,
+  Star,
   Ticket,
   TriangleAlert,
 } from "lucide-react";
-import { countsFor, formatMoney } from "@assembly/contracts";
-import { useWorkspace, WorkspaceProvider } from "./workspace-context";
-import { Badge, Button, ButtonLink, PublicFooter } from "./ui";
-import { PublicLoading, PublicFailure } from "./event-page";
-import { eventDate } from "@/lib/format";
+import type { ParticipantView, PublicActionRequest } from "@assembly/contracts";
+import { usePublicView } from "./public-session";
+import { Badge, Button, PublicFooter } from "./ui";
+import { PublicLoading, PublicFailure, PublicTerms } from "./event-page";
+
 export function CommitmentPage({ token }: { token: string }) {
-  return (
-    <WorkspaceProvider>
-      <Commitment token={token} />
-    </WorkspaceProvider>
+  const remote = usePublicView<ParticipantView>(
+    `/api/participants/${encodeURIComponent(token)}`,
   );
-}
-function Commitment({ token }: { token: string }) {
-  const {
-    workspace: w,
-    loading,
-    error,
-    notice,
-    refresh,
-    act,
-    busy,
-  } = useWorkspace();
-  const [consent, setConsent] = useState(false);
+  const [acceptedHash, setAcceptedHash] = useState<string | null>(null);
   const [withdraw, setWithdraw] = useState(false);
-  if (loading) return <PublicLoading />;
-  if (!w) return <PublicFailure error={error} retry={refresh} />;
-  const c = w.commitments.find((c) => c.token === token);
-  if (!c)
-    return (
-      <div className="public-site">
-        <main id="main" className="not-found">
-          <div className="eyebrow">A PRIVATE SAMPLE CHOICE</div>
-          <h1>
-            This invitation
-            <br />
-            <em>belongs elsewhere.</em>
-          </h1>
-          <p>
-            The link is invalid, expired, or belongs to a different browser’s
-            isolated workspace.
-          </p>
-          <ButtonLink href="/events/blue-hour">
-            See the sample evening <ArrowRight size={16} />
-          </ButtonLink>
-        </main>
-      </div>
-    );
-  const booking = w.bookings.find(
-    (b) => b.commitmentId === c.id && b.status !== "CANCELLED",
-  );
+  const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  if (remote.loading) return <PublicLoading />;
+  if (!remote.view)
+    return <PublicFailure error={remote.error} retry={remote.refresh} />;
+  const { event: w, commitment: c, feedback } = remote.view;
+  const booking =
+    remote.view.booking?.status !== "CANCELLED" ? remote.view.booking : null;
   const pending = c.status === "PENDING",
     reconfirm = c.status === "RECONFIRM_REQUIRED",
-    withdrawn = c.status === "WITHDRAWN";
+    withdrawn = c.status === "WITHDRAWN",
+    cancelled = w.event.lifecycle === "CANCELLED",
+    completed = w.event.lifecycle === "COMPLETED";
   const bookingOpen =
     w.event.lifecycle === "BOOKING_OPEN" && !w.event.bookingPaused;
+  const act = (
+    type: PublicActionRequest["type"],
+    payload: Record<string, unknown> = {},
+  ) =>
+    remote.act({
+      type,
+      expectedPublicVersion: w.version,
+      termsVersion: w.terms.version,
+      termsHash: w.terms.hash,
+      payload,
+    });
+  const sample = w.mode === "SAMPLE";
   return (
     <div className="public-site commitment-site">
       <header className="event-header">
@@ -76,45 +63,63 @@ function Commitment({ token }: { token: string }) {
           ASSEMBLY<span>.</span>
         </Link>
         <span>YOUR CHOICE, IN YOUR HANDS</span>
-        <Link href="/studio/events/blue-hour/demand">
-          Sample producer view <ArrowUpRight size={14} />
-        </Link>
+        <Badge tone={sample ? "warning" : "neutral"}>
+          {sample ? "Sample response" : "Private response"}
+        </Badge>
       </header>
       <main id="main" className="commitment-main">
-        <Link className="text-link" href="/events/blue-hour">
+        <Link className="text-link" href={`/events/${w.event.slug}`}>
           <ArrowLeft size={14} />
           Back to the evening
         </Link>
         <div className="commitment-layout">
           <section className="commitment-copy">
-            <div className={`commitment-symbol ${reconfirm ? "warning" : ""}`}>
-              {pending ? (
-                <MailCheck size={32} strokeWidth={1.25} />
+            <div
+              className={`commitment-symbol ${reconfirm || cancelled ? "warning" : ""}`}
+            >
+              {cancelled ? (
+                <TriangleAlert size={32} />
               ) : reconfirm ? (
-                <RefreshSymbol />
-              ) : withdrawn ? (
-                <Check size={32} />
+                <RefreshCw size={32} />
               ) : booking ? (
                 <Ticket size={32} strokeWidth={1.25} />
+              ) : pending ? (
+                <Link2 size={32} strokeWidth={1.25} />
               ) : (
                 <CheckCircle2 size={32} strokeWidth={1.25} />
               )}
             </div>
             <Badge
-              tone={reconfirm ? "warning" : pending ? "neutral" : "positive"}
-            >
-              {withdrawn
-                ? "Choice withdrawn"
-                : reconfirm
-                  ? "New terms need your choice"
+              tone={
+                reconfirm || cancelled
+                  ? "warning"
                   : pending
-                    ? "One sample step to go"
-                    : booking
-                      ? "Sample place allocated"
-                      : "Verified conditional interest"}
+                    ? "neutral"
+                    : "positive"
+              }
+            >
+              {cancelled
+                ? "Production cancelled"
+                : withdrawn
+                  ? "Choice withdrawn"
+                  : reconfirm
+                    ? "New terms need your choice"
+                    : pending
+                      ? "One clear choice to go"
+                      : completed
+                        ? "The evening is complete"
+                        : booking
+                          ? `${sample ? "Sample p" : "P"}laces allocated`
+                          : "Confirmed conditional interest"}
             </Badge>
             <h1>
-              {pending ? (
+              {cancelled ? (
+                <>
+                  Plans changed.
+                  <br />
+                  <em>Your places are released.</em>
+                </>
+              ) : pending ? (
                 <>
                   Make your
                   <br />
@@ -124,7 +129,7 @@ function Commitment({ token }: { token: string }) {
                 <>
                   The evening changed.
                   <br />
-                  <em>Your choice is new.</em>
+                  <em>The choice is still yours.</em>
                 </>
               ) : withdrawn ? (
                 <>
@@ -147,230 +152,287 @@ function Commitment({ token }: { token: string }) {
               )}
             </h1>
             <p>
-              {pending
-                ? `Hello ${c.displayName}. Confirm this sample contact and the exact event terms below. This simulated step sends no email and does not verify real email ownership.`
-                : reconfirm
-                  ? `The live program changed from ${w.change?.before} to ${w.change?.after}. Review terms v${w.terms.version} before deciding. Your old choice does not count toward the new proposition until you accept.`
-                  : withdrawn
-                    ? "Your conditional choice is withdrawn. Any sample allocation has been released. You can return to the event page to make a fresh choice."
-                    : booking
-                      ? `${c.quantity} sample ${c.quantity === 1 ? "place has" : "places have"} been allocated within the room’s capacity. No payment was taken, and this is not a real ticket.`
-                      : "Your sample choice is verified on the current terms. This is conditional interest; it does not allocate a seat or authorize payment."}
+              {cancelled
+                ? "The host cancelled this production. All app-managed places have been released. ASSEMBLY collected no payment."
+                : pending
+                  ? `Hello ${c.displayName}. Read the exact proposition and confirm that you would consider coming. No place is allocated until you choose to book.`
+                  : reconfirm
+                    ? `The host changed material event terms. Review version ${w.terms.version} and choose again. Any existing places stay held during this review; withdrawing releases them.`
+                    : withdrawn
+                      ? "Your choice is withdrawn and any allocation is released. You can make a new response from the event page if it is still open."
+                      : booking
+                        ? `${c.quantity} ${sample ? "sample " : ""}${c.quantity === 1 ? "place is" : "places are"} allocated within the host’s app-managed capacity. ${sample ? "This is a fictional rehearsal, not a real ticket." : "No payment was taken. Keep this link for entry and updates."}`
+                        : "Your choice is confirmed on the current terms. It is conditional interest. You can request places when the host opens booking."}
             </p>
             <div className="commitment-identity">
               <span>{c.displayName.charAt(0).toUpperCase()}</span>
               <div>
                 <strong>{c.displayName}</strong>
                 <small>
-                  {c.emailMasked} · {c.quantity}{" "}
-                  {c.quantity === 1 ? "person" : "people"}
+                  {c.quantity} {c.quantity === 1 ? "person" : "people"} ·
+                  response {c.id.slice(0, 8)}
                 </small>
               </div>
             </div>
-            {error ? (
+            {w.event.bookingPaused && !cancelled && !completed ? (
+              <div className="public-warning" role="status">
+                <TriangleAlert size={17} />
+                <p>
+                  New bookings are paused while the host reviews the production.
+                  Existing places stay held. Any revised terms will need your
+                  choice again.
+                </p>
+              </div>
+            ) : null}
+            {remote.error ? (
               <div className="public-error" role="alert">
                 <TriangleAlert size={17} />
-                <p>{error}</p>
+                <p>{remote.error}</p>
               </div>
             ) : null}
-            {notice ? (
+            {remote.notice ? (
               <div className="public-success" role="status">
                 <CheckCircle2 size={17} />
-                <p>{notice}</p>
+                <p>{remote.notice}</p>
               </div>
             ) : null}
-            {pending || reconfirm ? (
+            {(pending || reconfirm) && !cancelled && !completed ? (
               <div className="commitment-action">
                 <label className="consent-label">
                   <input
                     type="checkbox"
-                    checked={consent}
-                    onChange={(e) => setConsent(e.target.checked)}
+                    checked={acceptedHash === w.terms.hash}
+                    onChange={(e) =>
+                      setAcceptedHash(e.target.checked ? w.terms.hash : null)
+                    }
                   />
                   <span>
-                    I accept the exact terms v{w.terms.version} shown here. I
-                    understand this is an isolated sample choice and no real
-                    payment or reservation is made.
+                    I accept the exact terms v{w.terms.version} shown here.{" "}
+                    {sample
+                      ? "I understand this is a fictional rehearsal with no real reservation or payment."
+                      : "I understand this is my conditional choice, and I can withdraw."}
                   </span>
                 </label>
                 <Button
-                  disabled={!consent}
-                  busy={busy === (pending ? "VERIFY_INTEREST" : "RECONFIRM")}
+                  disabled={acceptedHash !== w.terms.hash}
+                  busy={remote.busy === (pending ? "CONFIRM" : "RECONFIRM")}
                   onClick={async () => {
                     if (
                       (
-                        await act(pending ? "VERIFY_INTEREST" : "RECONFIRM", {
-                          token,
-                          termsVersion: w.terms.version,
+                        await act(pending ? "CONFIRM" : "RECONFIRM", {
+                          consent: true,
                         })
                       ).ok
                     )
-                      setConsent(false);
+                      setAcceptedHash(null);
                   }}
                 >
-                  {pending
-                    ? "Verify my sample contact"
-                    : "Accept the revised terms"}
+                  {pending ? "Confirm my choice" : "Accept the revised terms"}
                   <Check size={16} />
                 </Button>
-                {pending ? (
-                  <div className="sample-verification-note">
-                    <Info size={14} />
-                    <span>Sample verification link. Nothing was emailed.</span>
-                  </div>
-                ) : null}
+                <div className="sample-verification-note">
+                  <Info size={14} />
+                  <span>
+                    This records your consent through this private link. It is
+                    not email or identity verification.
+                  </span>
+                </div>
               </div>
-            ) : !withdrawn && !booking ? (
+            ) : !withdrawn && !booking && !cancelled && !completed ? (
               <div className="commitment-action">
                 {bookingOpen ? (
                   <>
                     <Button
-                      busy={busy === "BOOK"}
-                      disabled={countsFor(w).remaining < c.quantity}
-                      onClick={() => void act("BOOK", { commitmentId: c.id })}
+                      busy={remote.busy === "FREE_BOOK"}
+                      disabled={w.counts.remaining < c.quantity}
+                      onClick={() => void act("FREE_BOOK")}
                     >
-                      Book {c.quantity} sample{" "}
+                      Book {c.quantity} {sample ? "sample " : ""}
                       {c.quantity === 1 ? "place" : "places"}
                       <Ticket size={16} />
                     </Button>
                     <div className="sample-verification-note">
                       <ShieldCheck size={14} />
                       <span>
-                        {countsFor(w).remaining} sample places remain. Capacity
-                        is checked when you book.
+                        {w.counts.remaining} places remain in this allotment.
+                        Capacity is checked when you book.
                       </span>
                     </div>
                   </>
                 ) : (
-                  <div className="booking-not-yet">
-                    <ClockIcon />
-                    <div>
-                      <strong>
-                        {w.event.bookingPaused
-                          ? "Bookings are paused during the change review."
-                          : "Bookings aren’t open yet."}
-                      </strong>
-                      <p>
-                        The producer must confirm the event and explicitly open
-                        sample booking.
-                      </p>
-                    </div>
+                  <div className="sample-verification-note">
+                    <Info size={17} />
+                    <span>
+                      {w.event.bookingPaused
+                        ? "The host is resolving a change. Your response is saved."
+                        : "The host has not opened booking yet. Refresh this link to check for an update."}
+                    </span>
                   </div>
                 )}
               </div>
             ) : null}
-            {!withdrawn ? (
-              <div className="withdraw-action">
+            {booking ? (
+              <div className="private-ticket">
+                <Ticket size={23} />
+                <div>
+                  <strong>
+                    {c.quantity} {c.quantity === 1 ? "place" : "places"} ·{" "}
+                    {booking.checkedIn
+                      ? "Arrival recorded"
+                      : booking.status === "RECONFIRM_REQUIRED"
+                        ? "Held for your new choice"
+                        : "Confirmed"}
+                  </strong>
+                  <span>
+                    Booking {booking.id.slice(0, 8).toUpperCase()} · terms v
+                    {booking.termsVersion}
+                  </span>
+                </div>
+              </div>
+            ) : null}
+            {!withdrawn && !cancelled && !completed ? (
+              <div className="withdraw-section">
                 {withdraw ? (
                   <>
                     <p>
-                      Withdraw this choice and release any allocated sample
-                      places?
+                      Withdraw this choice and release any places held for your
+                      party?
                     </p>
-                    <div>
+                    <div className="button-row">
                       <Button
-                        variant="secondary"
-                        onClick={() => setWithdraw(false)}
-                      >
-                        Keep my choice
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        busy={busy === "WITHDRAW_INTEREST"}
+                        variant="danger"
+                        busy={remote.busy === "WITHDRAW"}
                         onClick={async () => {
-                          if (
-                            (
-                              await act("WITHDRAW_INTEREST", {
-                                token,
-                                termsVersion: w.terms.version,
-                              })
-                            ).ok
-                          )
-                            setWithdraw(false);
+                          if ((await act("WITHDRAW")).ok) setWithdraw(false);
                         }}
                       >
                         Yes, withdraw my choice
                       </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={() => setWithdraw(false)}
+                      >
+                        Keep my choice
+                      </Button>
                     </div>
                   </>
                 ) : (
-                  <button onClick={() => setWithdraw(true)}>
-                    Withdraw my sample choice
+                  <button
+                    className="text-link"
+                    onClick={() => setWithdraw(true)}
+                  >
+                    I can no longer make it <ArrowRight size={14} />
                   </button>
                 )}
               </div>
-            ) : (
-              <ButtonLink href="/events/blue-hour" variant="secondary">
-                Back to the event <ArrowRight size={16} />
-              </ButtonLink>
-            )}
+            ) : null}
+            {completed && !withdrawn ? (
+              <form
+                className="feedback-form"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  await act("SUBMIT_FEEDBACK", { rating, comment });
+                }}
+              >
+                <div className="eyebrow">
+                  <Star size={15} />
+                  THE AFTERGLOW
+                </div>
+                <h3>
+                  {feedback
+                    ? "Thank you for the honest response."
+                    : "How was the evening?"}
+                </h3>
+                {feedback ? (
+                  <p>
+                    You recorded {feedback.rating}/5. {feedback.comment}
+                  </p>
+                ) : (
+                  <>
+                    <label className="field">
+                      <span>Your experience</span>
+                      <select
+                        value={rating}
+                        onChange={(e) => setRating(Number(e.target.value))}
+                      >
+                        {[5, 4, 3, 2, 1].map((n) => (
+                          <option value={n} key={n}>
+                            {n} / 5
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="field">
+                      <span>What should the host know?</span>
+                      <textarea
+                        value={comment}
+                        maxLength={1000}
+                        rows={3}
+                        onChange={(e) => setComment(e.target.value)}
+                        placeholder="Something that worked. Something to do differently."
+                      />
+                    </label>
+                    <Button
+                      type="submit"
+                      busy={remote.busy === "SUBMIT_FEEDBACK"}
+                    >
+                      Save my feedback
+                      <Check size={15} />
+                    </Button>
+                  </>
+                )}
+              </form>
+            ) : null}
+            <div className="private-link-note">
+              <Fingerprint size={17} />
+              <div>
+                <strong>Keep your private response link.</strong>
+                <p>
+                  Anyone with this link can manage this choice. It works in
+                  another browser. No messages are sent.
+                </p>
+                <div className="button-row">
+                  <Button
+                    variant="secondary"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(
+                          window.location.href,
+                        );
+                        setCopied(true);
+                        setCopyError(false);
+                      } catch {
+                        setCopyError(true);
+                      }
+                    }}
+                  >
+                    {copied ? <Check size={15} /> : <Copy size={15} />}
+                    {copied ? "Private link copied" : "Copy my private link"}
+                  </Button>
+                  <Button variant="ghost" onClick={() => void remote.refresh()}>
+                    <RefreshCw size={14} />
+                    Check for updates
+                  </Button>
+                </div>
+                {copyError ? (
+                  <p role="status">
+                    Copy this page’s address from your browser to save the link.
+                  </p>
+                ) : null}
+              </div>
+            </div>
           </section>
           <aside className="commitment-terms">
-            <div className="eyebrow">THE EXACT EVENING YOU’RE CHOOSING</div>
             <h2>{w.terms.title}</h2>
-            <dl>
-              <div>
-                <dt>Date</dt>
-                <dd>{eventDate(w.terms.date)}</dd>
-              </div>
-              <div>
-                <dt>Time</dt>
-                <dd>
-                  {w.terms.doors}–{w.terms.end} · Europe/London
-                </dd>
-              </div>
-              <div>
-                <dt>Place</dt>
-                <dd>
-                  {w.terms.venue}, {w.venue.neighborhood}
-                </dd>
-              </div>
-              <div>
-                <dt>Price condition</dt>
-                <dd>
-                  {formatMoney(w.terms.priceMinor)} per person · no sample
-                  charge
-                </dd>
-              </div>
-              <div>
-                <dt>Program</dt>
-                <dd>{w.terms.program}</dd>
-              </div>
-              <div>
-                <dt>Access</dt>
-                <dd>{w.terms.access}</dd>
-              </div>
-            </dl>
-            {reconfirm ? (
-              <div className="reconfirmation-diff">
-                <span>PREVIOUS PROGRAM</span>
-                <del>{w.change?.before}</del>
-                <span>REVISED PROGRAM</span>
-                <strong>{w.change?.after}</strong>
-                <p>Date, venue, and price are unchanged.</p>
-              </div>
-            ) : null}
-            <div className="terms-fingerprint">
-              <Fingerprint size={13} />
-              Terms v{w.terms.version} · {w.terms.hash.slice(0, 12)}
-            </div>
-            <div className="commitment-terms-note">
-              <ShieldCheck size={17} />
-              <p>
-                This confirmation is scoped to this browser’s sample workspace.
-                It is not a publicly shareable or real ticket.
-              </p>
-            </div>
+            <PublicTerms
+              terms={w.terms}
+              timezone={w.venue.timezone}
+              sample={sample}
+            />
           </aside>
         </div>
       </main>
       <PublicFooter />
     </div>
   );
-}
-function RefreshSymbol() {
-  return <TriangleAlert size={32} strokeWidth={1.25} />;
-}
-function ClockIcon() {
-  return <Info size={20} />;
 }

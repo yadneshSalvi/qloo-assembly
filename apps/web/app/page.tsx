@@ -45,7 +45,7 @@ export default function Home() {
             </div>
             <div className="hero-footnote">
               <span className="sample-ring" />
-              An interactive sample studio. No account needed.
+              Live cultural research. Human decisions. No account needed.
             </div>
           </div>
           <div className="hero-visual">
@@ -112,8 +112,8 @@ export default function Home() {
                   48 people, one table
                 </span>
               </div>
-              <ButtonLink href="/events/blue-hour" variant="secondary">
-                Step inside the night <ArrowUpRight size={17} />
+              <ButtonLink href="/demo" variant="secondary">
+                Make it your evening <ArrowUpRight size={17} />
               </ButtonLink>
             </div>
             <div
@@ -153,7 +153,7 @@ export default function Home() {
                 <path d="M160 115C230 115 245 200 290 210M415 110C340 110 340 175 290 210M370 340C315 340 330 245 290 210" />
               </svg>
               <div className="map-note">
-                Editorial connections · Qloo evidence is not connected
+                Authored editorial example · explore live evidence in the studio
               </div>
             </div>
           </div>
@@ -197,9 +197,10 @@ export default function Home() {
         <section className="landing-note">
           <span className="sample-ring" />
           <p>
-            This is a working sample experience with fictional inventory. Your
-            choices are saved in an isolated workspace. No real reservations,
-            payments, or messages are sent.
+            Rehearse with a fictional room, or enter your own venue and offers.
+            Qloo brings cultural evidence. People confirm the terms. ASSEMBLY
+            keeps the production moving, without collecting payments or sending
+            messages.
           </p>
           <Link href="/demo">
             Explore the studio <ArrowUpRight size={16} />

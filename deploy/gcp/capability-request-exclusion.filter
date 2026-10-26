@@ -1,0 +1,1 @@
+resource.type="cloud_run_revision" AND httpRequest.requestUrl=~"(?i)(/|%2f)(commitments|collaborate|api(/|%2f)(participants|suppliers))(/|%2f|[?]|$)"

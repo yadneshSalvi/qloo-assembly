@@ -68,18 +68,50 @@ export function ApprovalDialog({
           {change ? (
             <div className="proposed-change-preview">
               <div className="eyebrow">
-                PROPOSED PROGRAM · TERMS v{w.terms.version + 1}
+                PROPOSED CHANGE · TERMS v{w.terms.version + 1}
               </div>
-              <div>
-                <del>{change.before}</del>
-                <ArrowRight size={15} />
-                <strong>{change.after}</strong>
-              </div>
+              {change.supplierId ? (
+                <div>
+                  <del>{change.before}</del>
+                  <ArrowRight size={15} />
+                  <strong>{change.after}</strong>
+                </div>
+              ) : null}
+              {change.diff?.map((diff) => (
+                <div className="approval-diff" key={diff.field}>
+                  <span>
+                    {diff.field === "priceMinor"
+                      ? "Price"
+                      : diff.field === "programSchedule"
+                        ? "Program times"
+                        : diff.field === "setupSchedule"
+                          ? "Setup times"
+                          : diff.field}
+                  </span>
+                  <del>
+                    {diff.field === "priceMinor"
+                      ? formatMoney(Number(diff.before))
+                      : diff.before}
+                  </del>
+                  <strong>
+                    {diff.field === "priceMinor"
+                      ? formatMoney(Number(diff.after))
+                      : diff.after}
+                  </strong>
+                </div>
+              ))}
               <p>
-                Fixed production cost increases by{" "}
-                <strong>{formatMoney(change.costDeltaMinor)}</strong>. Date,
-                venue, price, and access terms remain as shown below. Current
-                active choices will require reconfirmation.
+                Full-capacity cost delta:{" "}
+                <strong>
+                  {(change.totalCostDeltaMinor ?? change.costDeltaMinor) >= 0
+                    ? "+"
+                    : ""}
+                  {formatMoney(
+                    change.totalCostDeltaMinor ?? change.costDeltaMinor,
+                  )}
+                </strong>
+                . Current active choices will require reconfirmation. The
+                differences above become the new terms.
               </p>
             </div>
           ) : null}
@@ -98,6 +130,15 @@ export function ApprovalDialog({
                 <dt>Date</dt>
                 <dd>
                   {w.terms.date} · {w.terms.doors}–{w.terms.end}
+                  {" · "}
+                  {w.terms.timezone || w.venue.timezone}
+                </dd>
+              </div>
+              <div>
+                <dt>Room limits</dt>
+                <dd>
+                  {w.terms.soundLimitDb ?? w.venue.soundLimitDb} dB · curfew{" "}
+                  {w.terms.curfew || w.venue.curfew}
                 </dd>
               </div>
               <div>
@@ -109,13 +150,32 @@ export function ApprovalDialog({
               <div>
                 <dt>Price</dt>
                 <dd>
-                  {formatMoney(w.terms.priceMinor)} per person · sample only
+                  {formatMoney(w.terms.priceMinor)} per person ·{" "}
+                  {w.mode === "SAMPLE" ? "sample only" : "free admission"}
                 </dd>
               </div>
               <div>
                 <dt>{change ? "Previous program" : "Program"}</dt>
                 <dd>{w.terms.program}</dd>
               </div>
+              {w.terms.programSchedule?.length ? (
+                <div>
+                  <dt>{change ? "Previous times" : "Program times"}</dt>
+                  <dd>
+                    <ul className="terms-program-slots">
+                      {w.terms.programSchedule.map((slot) => (
+                        <li key={slot.supplierId}>
+                          <strong>
+                            {slot.start}–{slot.end}
+                          </strong>{" "}
+                          · {slot.name}
+                          {slot.canOverlap ? " · concurrent service" : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  </dd>
+                </div>
+              ) : null}
               <div>
                 <dt>Access</dt>
                 <dd>{w.terms.access}</dd>
@@ -144,8 +204,8 @@ export function ApprovalDialog({
             />
             <span>
               {change
-                ? "I have reviewed this replacement, cost delta, and unchanged terms. I approve this exact change in my isolated sample workspace."
-                : "I have reviewed these exact terms and approve this action in my isolated sample workspace."}
+                ? `I have reviewed the exact differences, cost delta and base terms. I approve this change${w.mode === "SAMPLE" ? " in this fictional rehearsal" : " as the operator"}.`
+                : `I have reviewed these exact terms and approve this action${w.mode === "SAMPLE" ? " in this fictional rehearsal" : " as the operator"}.`}
             </span>
           </label>
           {error ? (

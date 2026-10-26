@@ -9,5 +9,5 @@ export default async function Commitment({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  return <CommitmentPage token={token} />;
+  return <CommitmentPage key={token} token={token} />;
 }

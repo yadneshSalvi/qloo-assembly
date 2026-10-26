@@ -9,5 +9,5 @@ export default async function Collaborator({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  return <CollaboratorPage token={token} />;
+  return <CollaboratorPage key={token} token={token} />;
 }

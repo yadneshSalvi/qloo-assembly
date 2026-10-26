@@ -1,9 +1,9 @@
-import { notFound } from "next/navigation";
 import { EventPage } from "@/components/event-page";
 export const metadata = {
-  title: "Blue hour, shared table",
+  title: "An evening, made together",
   description:
-    "A listening supper at The Fold. An interactive authored sample from ASSEMBLY.",
+    "Read the exact proposal and make your choice. An independent production on ASSEMBLY.",
+  robots: { index: false, follow: false },
 };
 export default async function Event({
   params,
@@ -11,6 +11,5 @@ export default async function Event({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  if (slug !== "blue-hour") notFound();
-  return <EventPage />;
+  return <EventPage key={slug} slug={slug} />;
 }

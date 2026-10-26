@@ -31,31 +31,74 @@ export function ResultsView() {
         </h2>
         <p>
           {done
-            ? "Here is what happened in this isolated sample. Observations stay separate from hopes, hypotheses, and estimates."
+            ? w.mode === "SAMPLE"
+              ? "Here is what happened in this fictional rehearsal. Recorded actions stay separate from real-world outcomes."
+              : "Here is the operator’s record of this production, alongside guest choices and feedback. The record does not independently verify a physical event."
             : "Every saved choice and production step becomes part of the record. The outcome will only reflect what you actually do."}
         </p>
         <Badge tone={done ? "positive" : "neutral"}>
-          {done ? "Sample production completed" : "Production in progress"}
+          {done
+            ? w.mode === "SAMPLE"
+              ? "Sample production completed"
+              : "Completion recorded by operator"
+            : w.event.lifecycle === "CANCELLED"
+              ? "Production cancelled"
+              : "Production in progress"}
         </Badge>
       </div>
       <div className="result-metrics">
         <div>
           <strong>{n.verified}</strong>
-          <span>current verified choices</span>
+          <span>current confirmed choices</span>
         </div>
         <div>
           <strong>{n.bookings}</strong>
-          <span>confirmed sample places</span>
+          <span>
+            {w.mode === "SAMPLE"
+              ? "confirmed sample places"
+              : "confirmed free places"}
+          </span>
         </div>
         <div>
           <strong>{n.checkins}</strong>
-          <span>observed sample arrivals</span>
+          <span>
+            {w.mode === "SAMPLE"
+              ? "recorded sample arrivals"
+              : "operator-recorded arrivals"}
+          </span>
         </div>
         <div>
           <strong>£0</strong>
-          <span>paid transactions</span>
+          <span>collected through ASSEMBLY</span>
         </div>
       </div>
+      {w.feedback?.length ? (
+        <section className="panel feedback-results">
+          <div className="panel-heading">
+            <div>
+              <h3>Voices after the evening</h3>
+              <p>
+                {w.feedback.length} private-link feedback{" "}
+                {w.feedback.length === 1 ? "response" : "responses"} ·{" "}
+                {w.mode === "SAMPLE"
+                  ? "sample activity"
+                  : "submitted by response-link holders"}
+              </p>
+            </div>
+          </div>
+          {w.feedback.map((f) => (
+            <div className="feedback-result" key={f.id}>
+              <strong>{f.rating} / 5</strong>
+              <p>{f.comment || "Rating only"}</p>
+              <span>
+                {f.origin === "AUTHORED_SAMPLE"
+                  ? "Rehearsal response"
+                  : "Participant response"}
+              </span>
+            </div>
+          ))}
+        </section>
+      ) : null}
       <div className="results-layout">
         <section className="panel">
           <div className="panel-heading">
@@ -95,9 +138,9 @@ export function ResultsView() {
             <div className="eyebrow">WHAT THE NUMBERS CAN SAY</div>
             <h3>Evidence, with its edges.</h3>
             <p>
-              This is a fictional, local scenario. It demonstrates the
-              operational workflow; it does not measure real demand, revenue, or
-              Qloo’s contribution.
+              {w.mode === "SAMPLE"
+                ? "This is a fictional rehearsal. It demonstrates the operational flow; it does not measure real demand, revenue or independent human preference."
+                : "These are choices submitted through private links and observations recorded by the operator. Link possession is not independent identity verification."}
             </p>
             <dl>
               <div>
@@ -109,21 +152,35 @@ export function ResultsView() {
                 <dd>£0</dd>
               </div>
               <div>
-                <dt>Independent pilot participants</dt>
-                <dd>0</dd>
+                <dt>Independent impact study</dt>
+                <dd>Not measured</dd>
               </div>
               <div>
-                <dt>Live Qloo results</dt>
-                <dd>0</dd>
+                <dt>Live Qloo evidence records</dt>
+                <dd>
+                  {w.evidence.filter((e) => e.origin === "QLOO_RESULT").length}
+                </dd>
               </div>
             </dl>
             <div className="inline-hint">
-              <Info size={14} />A preference study and a real authorized pilot
-              remain separate work.
+              <Info size={14} />
+              Affinity does not measure demand or Qloo’s causal contribution.
             </div>
           </div>
+          {w.completion ? (
+            <div className="panel results-notes">
+              <div className="eyebrow">COMPLETION RECORD</div>
+              <p>{w.completion.evidence}</p>
+              <small>
+                {new Date(w.completion.observedAt).toLocaleString("en-GB")} ·{" "}
+                {w.completion.origin === "AUTHORED_SAMPLE"
+                  ? "Rehearsal observation"
+                  : "Operator assertion"}
+              </small>
+            </div>
+          ) : null}
           {!done ? (
-            <ButtonLink href="/studio/events/blue-hour/production">
+            <ButtonLink href="/studio/events/current/production">
               Continue the production <ArrowRight size={16} />
             </ButtonLink>
           ) : (

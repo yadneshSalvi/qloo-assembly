@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@ai-sdk/openai':
+        specifier: 4.0.103
+        version: 4.0.103(zod@4.6.7)
       '@assembly/contracts':
         specifier: workspace:*
         version: link:packages/contracts
@@ -17,6 +20,9 @@ importers:
       '@assembly/qloo':
         specifier: workspace:*
         version: link:packages/qloo
+      '@assembly/research':
+        specifier: workspace:*
+        version: link:packages/research
       '@fontsource-variable/fraunces':
         specifier: 5.3.0
         version: 5.3.0
@@ -102,17 +108,47 @@ importers:
 
   packages/qloo:
     dependencies:
+      '@assembly/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@modelcontextprotocol/sdk':
         specifier: 1.32.2
         version: 1.32.2(zod@4.6.7)
       '@qloo/qloo-harness':
         specifier: 0.1.26
         version: 0.1.26(@modelcontextprotocol/sdk@1.32.2(zod@4.6.7))(ws@8.22.0)(zod@4.6.7)
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+
+  packages/research:
+    dependencies:
+      '@ai-sdk/openai':
+        specifier: 4.0.103
+        version: 4.0.103(zod@4.6.7)
+      '@assembly/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@assembly/qloo':
+        specifier: workspace:*
+        version: link:../qloo
+      ai:
+        specifier: 7.0.152
+        version: 7.0.152(zod@4.6.7)
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
 
 packages:
 
   '@ai-sdk/gateway@4.0.125':
     resolution: {integrity: sha512-9raNdkENebDxVl4piGntpQgOBHB62K1rC87KceV8kkGOc/g7s6lwbxN7C6QTqXYJaM+h1Lnm64MDgnHAmzUApg==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
+  '@ai-sdk/openai@4.0.103':
+    resolution: {integrity: sha512-ZaMITn2RBzILNzrpXxJDMPRpNHGwZdq77GWqd9UBuz5VAA8EOu9JPy8hTk5OVhPMzDZbNgpb/D/1G+NbeVP22w==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -123,8 +159,18 @@ packages:
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
+  '@ai-sdk/provider-utils@5.0.69':
+    resolution: {integrity: sha512-oGCXIoBKLpNrrAzJvltFHdBl20FJMyT+7edD9D4nwxoI8Scbj3y1EgKzjoF2XFhNYkMTcv1oTFDgUzLxdjqSKg==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
   '@ai-sdk/provider@4.0.33':
     resolution: {integrity: sha512-C6ylMuAXjgqKJllp6ODIJwUltK/tm3ZmIj4V2fqENP3Y8gif2DyeJSsTcDwFrXppgEKcrBisi/BWx2tYeoeCAw==}
+    engines: {node: '>=22'}
+
+  '@ai-sdk/provider@4.0.34':
+    resolution: {integrity: sha512-Ip7ZQBq/FiGpM1mmOVseTtX9PBjnzo0bLC41WTgBSBBRUBz6LhNFGbYaNUzI6hPm6ll1oNSPOAZc/q/z+3QZEQ==}
     engines: {node: '>=22'}
 
   '@alloc/quick-lru@5.3.0':
@@ -3653,6 +3699,12 @@ snapshots:
       '@vercel/oidc': 3.2.0
       zod: 4.6.7
 
+  '@ai-sdk/openai@4.0.103(zod@4.6.7)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.34
+      '@ai-sdk/provider-utils': 5.0.69(zod@4.6.7)
+      zod: 4.6.7
+
   '@ai-sdk/provider-utils@5.0.67(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 4.0.33
@@ -3662,7 +3714,20 @@ snapshots:
       undici: 7.30.1
       zod: 4.6.7
 
+  '@ai-sdk/provider-utils@5.0.69(zod@4.6.7)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.34
+      '@standard-schema/spec': 1.1.0
+      '@workflow/serde': 4.1.0
+      eventsource-parser: 3.1.1
+      undici: 7.30.1
+      zod: 4.6.7
+
   '@ai-sdk/provider@4.0.33':
+    dependencies:
+      json-schema: 0.4.0
+
+  '@ai-sdk/provider@4.0.34':
     dependencies:
       json-schema: 0.4.0
 

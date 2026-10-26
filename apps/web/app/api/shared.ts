@@ -8,7 +8,11 @@ export async function token() {
 export function json(value: unknown, status = 200) {
   return NextResponse.json(value, {
     status,
-    headers: { "Cache-Control": "private, no-store" },
+    headers: {
+      "Cache-Control": "private, no-store",
+      "Referrer-Policy": "no-referrer",
+      "X-Robots-Tag": "noindex, nofollow",
+    },
   });
 }
 export function reject(error: unknown) {
