@@ -4,7 +4,7 @@ This record separates deterministic verification, actual provider behavior and p
 
 ## Candidate verification
 
-The final local candidate passed 109 backend, provider-contract, presentation, scheduling and PostgreSQL tests across 13 files, with no skips, plus TypeScript, lint and formatting checks. Its browser suite exercised a complete rehearsal with independent operator, guest and supplier contexts: publication, exact confirmations, allocation, supplier loss, revised terms, guest reconfirmation, production tasks, check-in and completion.
+The release candidate passed [GitHub CI run 40414736236](https://github.com/yadneshSalvi/qloo-assembly/actions/runs/40414736236) at application commit `1b64da08d1dd3e90b5abd00c22fed2f0943e52c1`: 109 backend, provider-contract, presentation, scheduling and real PostgreSQL tests across 13 files, with no skips, and 15 browser tests in one clean 49.8-second batch. TypeScript, lint and production build also passed in CI; formatting passed locally. The browser suite exercised a complete rehearsal with independent operator, guest and supplier contexts: publication, exact confirmations, allocation, supplier loss, revised terms, guest reconfirmation, production tasks, check-in and completion.
 
 Additional browser coverage included own-production inventory entry, workspace switching, rejected capability misuse, stale versions, keyboard interaction, layouts at 390/768/1024/1440 pixels and automated accessibility checks on the public, studio and private-role screens. Automated accessibility tests are not a substitute for assistive-technology user testing.
 
@@ -54,6 +54,8 @@ That browser rehearsal published exact terms v4 with a 19:00–19:50 performance
 Five dependency-ordered tasks, readiness, two recorded arrivals, completion and one explicitly synthetic feedback response were then saved. The outcome showed two current confirmed choices by quantity, two allocated sample places, two recorded sample arrivals, four live Qloo evidence records and £0 collected. Browser error logs were empty across the three role views. This manual capture used separate role tabs in one browser; independent session isolation was verified by the earlier automated three-context rehearsal. It is software behavior evidence, not an independent human pilot.
 
 This final review also caught two presentation issues: conservative freshness rejection incorrectly implied that assignment terms necessarily changed, and the resume control did not display the remaining operational gates. The server rejected both stale responses and premature resume correctly. The release clarifies the freshness message and aligns the resume control with current supplier and responsibility checks.
+
+The first full CI run passed all 109 backend tests and 14 of 15 browser tests, exposing a draft-save defect: blank optional program/setup fields were sent as empty strings rather than omitted. The editor now omits those blank fields. The regression saves and reopens the unfinished offer and verifies that its times remain absent. Provided-time validation and the stricter composition, publication and greenlight gates are unchanged; the subsequent full CI run passed all 15 browser tests.
 
 ## What the tests establish
 

@@ -1,5 +1,7 @@
 # ASSEMBLY — Make a night of it.
 
+[Live application](https://assembly-web-yuouzcvoaa-uc.a.run.app) · [Demonstration film](https://assembly-demo-yuouzcvoaa-uc.a.run.app) · [Public source](https://github.com/yadneshSalvi/qloo-assembly)
+
 ## Elevator pitch
 
 Turn an empty evening into a cultural gathering people can explicitly choose. ASSEMBLY combines Qloo's cultural graph, a bounded creative agent and a production desk that keeps approvals, commitments and changes connected.

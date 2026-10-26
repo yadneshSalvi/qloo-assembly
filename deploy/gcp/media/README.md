@@ -40,3 +40,8 @@ URL, verify anonymous page access, video/mp4, image/png or image/jpeg, text/vtt,
 a 206 response with correct Content-Range, and playback/seeking/native captions in
 a fresh browser. Compare uploaded asset hashes to the release-approved files.
 Do not publish this template with unfilled application/source placeholders.
+
+The published film is available at [ASSEMBLY demo](https://assembly-demo-yuouzcvoaa-uc.a.run.app).
+The release service uses minimum 0 / maximum 1 with the dedicated role-free
+`assembly-media` account. Anonymous asset MIME types, full SHA-256 matches, and
+MP4 byte-range seeking were verified after deployment.
