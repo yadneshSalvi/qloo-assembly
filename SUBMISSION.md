@@ -1,6 +1,6 @@
 # ASSEMBLY — Make a night of it.
 
-[Live application](https://assembly-web-yuouzcvoaa-uc.a.run.app) · [Demonstration film](https://assembly-demo-yuouzcvoaa-uc.a.run.app) · [Public source](https://github.com/yadneshSalvi/qloo-assembly)
+[Live application](https://assembly-web-yuouzcvoaa-uc.a.run.app) · [3:58 demonstration film](https://assembly-demo-yuouzcvoaa-uc.a.run.app) · [Public source](https://github.com/yadneshSalvi/qloo-assembly)
 
 ## Elevator pitch
 
@@ -44,6 +44,8 @@ Real model outputs need a correction path as well as a schema. Our first live co
 We also learned to preserve what a cultural API actually returned. An omitted candidate is unknown, not a zero score. A film or book reference can inspire a conversation; it does not supply performance rights or prove attendance.
 
 ## Evidence and scope
+
+The [v0.2.0 film](https://assembly-demo-yuouzcvoaa-uc.a.run.app) records a new functioning-app journey at normal speed, with slow input, a single gentle focus and optional captions. Its [transcript](DEMO-TRANSCRIPT.md) follows the same 478 spoken words.
 
 See [Evaluation](EVALUATION.md) for reproducible checks and actual provider observations, and [Architecture](ARCHITECTURE.md) for the trust boundaries. The demonstration is explicitly a fictional rehearsal. It verifies working software, not independent audience demand, real supplier engagement, licensed performance, payment or causal business impact.
 

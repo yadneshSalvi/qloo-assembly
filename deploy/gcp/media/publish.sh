@@ -12,7 +12,7 @@ gc=${ASSEMBLY_GCLOUD_WRAPPER:-"$script_dir/../gcloud.sh"}
   --substitutions="_IMAGE=$ASSEMBLY_MEDIA_IMAGE" --quiet
 "$gc" run deploy assembly-demo --region="$ASSEMBLY_REGION" --image="$ASSEMBLY_MEDIA_IMAGE" \
   --service-account="assembly-media@$ASSEMBLY_GCP_PROJECT.iam.gserviceaccount.com" \
-  --port=8080 --cpu=1 --memory=512Mi --cpu-throttling --execution-environment=gen2 \
+  --port=8080 --use-http2 --cpu=1 --memory=512Mi --cpu-throttling --execution-environment=gen2 \
   --min=0 --min-instances=0 --max=1 --max-instances=1 --concurrency=40 --timeout=300 \
   --no-invoker-iam-check --quiet
 "$gc" run services describe assembly-demo --region="$ASSEMBLY_REGION" --format='value(status.url)'

@@ -2,7 +2,7 @@
 
 **Make a night of it.** ASSEMBLY turns an available room into a cultural proposal, explicit audience choices, supplier commitments and an approved production that can recover when plans change.
 
-[Open the deployed app](https://assembly-web-yuouzcvoaa-uc.a.run.app) · [Watch the 2:55 demonstration](https://assembly-demo-yuouzcvoaa-uc.a.run.app) · [Read the measured evaluation](EVALUATION.md)
+[Open the deployed app](https://assembly-web-yuouzcvoaa-uc.a.run.app) · [Watch the 3:58 demonstration](https://assembly-demo-yuouzcvoaa-uc.a.run.app) · [Read the measured evaluation](EVALUATION.md)
 
 The public invitation uses warm editorial typography and original event posters. The private production desk keeps the next decision, its evidence and its exact terms visible. Qloo supplies cross-domain cultural evidence; a bounded OpenAI agent composes proposals from entered inventory; people decide what happens.
 
