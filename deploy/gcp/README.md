@@ -15,7 +15,7 @@ evidence, interpretations, or authored sample material by the application.
 ## Runtime boundaries
 
 - Web: `node node_modules/next/dist/bin/next start apps/web --hostname 0.0.0.0`,
-  `PORT=8080`, 512 MiB, minimum 1 / maximum 2 instances, pool 4.
+  `PORT=8080`, 512 MiB, minimum 0 / maximum 2 instances, pool 4.
 - Worker: `node --import tsx apps/worker/index.ts`, 1 GiB, minimum 0 / maximum 1,
   concurrency 1, 180-second HTTP deadline, pool 2. Research is bounded to 90 seconds and at most four model calls, including one
   proposal correction.
@@ -89,9 +89,20 @@ Cloud Scheduler's first job in a new project can take a few minutes to start.
 ## Limits, cost and recovery
 
 The zonal `db-f1-micro` uses 10 GiB SSD and has no high availability or Cloud SQL
-SLA. Along with one warm request-billed web instance, estimated fixed infrastructure
-is roughly US$20–25/month before active workload, network/build/registry usage and
-provider billing. Maximum instances, one-at-a-time dispatch and persisted global /
+SLA. The deployment script sets both service-level and revision-level minimum
+instances to zero for web and worker, retaining request-based CPU billing. After
+idle instances are removed, the next visit or worker request can incur a cold
+start. On 28 October 2026, the live web service minimum was changed to zero without
+changing its application revision, revision specification, or traffic assignment.
+The deployment script preserves this setting for future releases.
+
+Provisioned Cloud SQL compute, database storage, and retained backups continue to
+incur charges. Active Cloud Run requests (including recovery requests), Tasks,
+Scheduler, Secret Manager, builds, artifact/media storage, logs, network traffic, and provider
+API usage add charges. Actual charges depend on usage, retention, applicable free
+tiers and discounts; scale-to-zero does not eliminate the database baseline.
+Maximum instances and provider limits are not a hard spending cap.
+One-at-a-time dispatch and persisted global /
 workspace daily provider limits remain bounded. Hosted worker limits are 64 / 12
 Qloo calls and 90 / 12 model calls per global / workspace day respectively. Source/local Qloo defaults remain 24 global calls;
 the hosted override of 64 permits several fresh judging walkthroughs while keeping
@@ -110,3 +121,14 @@ References: [Cloud Run pricing](https://cloud.google.com/run/pricing),
 [public access](https://docs.cloud.google.com/run/docs/authenticating/public),
 [Cloud SQL TLS identity](https://docs.cloud.google.com/sql/docs/postgres/configure-ssl-instance),
 [first scheduler job](https://docs.cloud.google.com/scheduler/docs/schedule-run-cron-job).
+
+Pricing examples checked 28 October 2026, conditional on the stated sizing rather
+than a verified live configuration or current bill: at 730 hours, a warm 1-vCPU,
+512-MiB web instance costs about US$9.86/month at idle CPU and memory rates of
+US$0.0000025 per vCPU-second and GiB-second respectively, before shared free tiers
+and discounts. Minimum zero removes that warm-instance baseline, not all charges.
+An Iowa non-HA `db-f1-micro` at US$0.0105/hour plus 10 GiB SSD at
+US$0.000232877/GiB-hour costs about US$9.37/month for compute and disk
+(`730 × 0.0105 + 10 × 730 × 0.000232877`), excluding backups, other services,
+provider usage, tax and discounts. See [Cloud Run rates](https://cloud.google.com/run/pricing)
+and [Cloud SQL rates](https://cloud.google.com/sql/pricing).

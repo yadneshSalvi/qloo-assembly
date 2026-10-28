@@ -26,7 +26,7 @@ common=(--image="$ASSEMBLY_IMAGE" --region="$ASSEMBLY_REGION" --network=assembly
 worker_url=$("$gc" run services describe assembly-worker --region="$ASSEMBLY_REGION" --format='value(status.url)')
 ./deploy/gcp/scheduler.sh
 "$gc" run deploy assembly-web "${common[@]}" \
-  --service-account="$web_sa" --memory=512Mi --min=1 --max=2 --max-instances=2 --concurrency=20 --timeout=60 \
+  --service-account="$web_sa" --memory=512Mi --min=0 --max=2 --max-instances=2 --concurrency=20 --timeout=60 \
   --startup-probe=tcpSocket.port=8080,timeoutSeconds=1,periodSeconds=10,failureThreshold=24 \
   --no-invoker-iam-check --set-secrets="$db_secrets" \
   --set-env-vars="WORKER_AUTH_MODE=cloud-run,DATABASE_SSL_MODE=verify-ca,DATABASE_SSL_CA_FILE=/secrets/sql-ca.pem,DATABASE_POOL_MAX=4,WORKER_URL=$worker_url,GOOGLE_CLOUD_PROJECT=$ASSEMBLY_GCP_PROJECT,ASSEMBLY_TASKS_LOCATION=$ASSEMBLY_REGION,ASSEMBLY_TASKS_QUEUE=assembly-research,ASSEMBLY_TASKS_INVOKER_SERVICE_ACCOUNT=$invoker_sa"
